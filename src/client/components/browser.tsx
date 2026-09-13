@@ -12,6 +12,7 @@ import { blockSummaryOf, callSummaryOf, parseCallArgs } from '../callSummary'
 import type { DetailState } from '../timelineSource'
 import { makeDetailNote } from './detailNote'
 import { makeNodeText } from './nodes'
+import { turnStepsOf } from './trendChart'
 import { fetchMissNote, useFetchOnMiss } from './fetchOnMiss'
 import { imageRefOf, makeImageCard } from './images'
 import type { ImageKit } from './images'
@@ -678,6 +679,7 @@ export function makeContextBrowser(
     const missNote = fetchMissNote(t, fetchContent, miss.state, miss.retry, 'browser.noContent')
 
     const requests = data.requests
+    const stepsOf = useMemo(() => turnStepsOf(requests), [requests])
     const hoverReq = props.previewSeq !== null && props.previewSeq !== undefined
       ? requests.find(r => r.seq === props.previewSeq) ?? null
       : null
@@ -1077,7 +1079,7 @@ export function makeContextBrowser(
             <option value="live">{t('browser.live')}</option>
             {requests.slice().reverse().map(r => (
               <option key={r.seq} value={String(r.seq)}>
-                {t('detail.step', { t: r.turn ?? 0, s: r.step ?? 0 }) + ' · ' + fmtTime(r.time)}
+                {t('detail.step', { t: r.turn ?? 0, s: r.step ?? 0, n: stepsOf(r.turn) }) + ' · ' + fmtTime(r.time)}
               </option>
             ))}
           </select>
@@ -1085,7 +1087,7 @@ export function makeContextBrowser(
 
         <div className="lc-br-meta">
           <b>{req !== null
-            ? t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0 })
+            ? t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0, n: stepsOf(req.turn) })
             : t('browser.liveNow')}</b>
           {req !== null ? <span>{fmtTime(req.time)}</span> : null}
           <span className="lc-est">{t('detail.estTotal', { n: fmt(total) })}</span>

@@ -22,6 +22,11 @@ export interface RequestDetailProps {
   brief?: StepBrief | null
   /** Conversation-snapshot join for call-argument enrichment; absent join = names only, never an error. */
   convOf?: (seq: number) => ConversationNodeLike | undefined
+  /**
+   * Per-turn step totals (the parent's `turnStepsOf` over the served requests) behind the head's
+   * step-of-total figure; absent = a 1-step turn.
+   */
+  stepsOf?: (turn: number | undefined) => number
   /** Reveal a brief row's node in the Context browser; absent = rows render inert. */
   onLocate?: (node: SurfaceNode, isResponse: boolean) => void
   /**
@@ -217,7 +222,7 @@ export function makeRequestDetail(
            the fallback is defensive. */
         n: req.stepCount ?? 0,
       })
-      : t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0 })
+      : t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0, n: props.stepsOf?.(req.turn) ?? 1 })
     // When this bar carries a boundary event (compaction/prune), the header
     // also shows WHERE the event happened: the gap between the request
     // before and the request after (e.g. "✂ Turn 49 · Step 2→3").

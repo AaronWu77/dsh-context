@@ -15,7 +15,7 @@
 import { act, createElement as h, useState } from 'react'
 import assert from 'node:assert/strict'
 import { afterAll, beforeAll, describe, test } from 'vitest'
-import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, type TrendChartProps } from '../../../src/client/components/trendChart'
+import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, turnStepsOf, type TrendChartProps } from '../../../src/client/components/trendChart'
 import { CATS } from '../../../src/client/categories'
 import type { ContextEventRecord, RequestRecord } from '../../../src/shared/types'
 import { click, flush, hover, makeKit, mount, query, queryAll, unhover, wheel } from '../helpers/kit'
@@ -230,7 +230,7 @@ describe('TrendChart step granularity, total mode', () => {
     // Rows: identity, then the SAME total the bar is drawn against (the heuristic 600, not the prompt 1200).
     assert.deepEqual(
       queryAll(tip, 'span').map(r => r.textContent),
-      [kit.t('tip.step', { t: 1, s: 1 }), kit.t('tip.total', { n: '600' })],
+      [kit.t('tip.step', { t: 1, s: 1, n: 2 }), kit.t('tip.total', { n: '600' })],
     )
     assert.equal(tip.style.transform, 'translate(23px, 0)') // idx 1 * 16 + BAR_W/2, scrollLeft 0
     assert.ok(spies.hover.length === 0, 'hover callback only fires from real mouseover')
@@ -293,7 +293,7 @@ describe('TrendChart delta mode', () => {
     await m.update(h(TrendChart, propsOf([base, grown, shrunk], { mode: 'delta', hoveredSeq: 2 })))
     assert.deepEqual(
       queryAll(query(m.container, '.lc-chart-tip'), 'span').map(r => r.textContent),
-      [kit.t('tip.step', { t: 1, s: 1 }), kit.t('tip.delta', { n: '+60' })],
+      [kit.t('tip.step', { t: 1, s: 1, n: 2 }), kit.t('tip.delta', { n: '+60' })],
     )
     await m.update(h(TrendChart, propsOf([base, grown, shrunk], { mode: 'delta', hoveredSeq: 3 })))
     assert.ok(query(m.container, '.lc-chart-tip').textContent!.includes(kit.t('tip.delta', { n: '-120' })))
@@ -491,7 +491,7 @@ describe('TrendChart category focus (the browser open category)', () => {
     await m.update(h(TrendChart, propsOf([r1, r2], { focusCat: 'tool', hoveredSeq: 1 })))
     assert.deepEqual(
       queryAll(query(m.container, '.lc-chart-tip'), 'span').map(r => r.textContent),
-      [kit.t('tip.step', { t: 1, s: 0 }), kit.t('tip.cat', { cat: kit.catLabel('tool'), n: '60' })],
+      [kit.t('tip.step', { t: 1, s: 0, n: 2 }), kit.t('tip.cat', { cat: kit.catLabel('tool'), n: '60' })],
     )
     await m.unmount()
   })
@@ -727,7 +727,7 @@ describe('TrendChart tooltips', () => {
     await m.update(h(TrendChart, propsOf(reqs, { ...handlers, hoveredSeq: 1 })))
     assert.deepEqual(
       queryAll(query(m.container, '.lc-chart-tip'), 'span').map(r => r.textContent),
-      [kit.t('tip.step', { t: 1, s: 0 }), kit.t('tip.total', { n: '300' })],
+      [kit.t('tip.step', { t: 1, s: 0, n: 1 }), kit.t('tip.total', { n: '300' })],
     )
     assert.equal(query(m.container, '.lc-chart-tip').style.transform, 'translate(7px, 0)')
 
@@ -735,7 +735,7 @@ describe('TrendChart tooltips', () => {
     await m.update(h(TrendChart, propsOf(reqs, { ...handlers, hoveredSeq: 4 })))
     assert.deepEqual(
       queryAll(query(m.container, '.lc-chart-tip'), 'span').map(r => r.textContent),
-      [kit.t('tip.step', { t: 0, s: 0 }), kit.t('tip.total', { n: '300' })],
+      [kit.t('tip.step', { t: 0, s: 0, n: 1 }), kit.t('tip.total', { n: '300' })],
     )
 
     // A hoveredSeq outside the rendered list floats no tip.
@@ -1068,6 +1068,25 @@ describe('aggregateByTurn', () => {
 
   test('an empty history aggregates to nothing', () => {
     assert.deepEqual(aggregateByTurn([]), [])
+  })
+})
+
+describe('turnStepsOf', () => {
+  test('tallies per-turn step counts over the raw records; turnless pool under 0', () => {
+    const stepsOf = turnStepsOf([
+      req(1, { turn: 1, step: 0 }),
+      req(2, { turn: 1, step: 1 }),
+      req(3, { turn: 2, step: 0 }),
+      req(4, { turn: undefined, step: undefined }),
+    ])
+    assert.equal(stepsOf(1), 2)
+    assert.equal(stepsOf(2), 1)
+    assert.equal(stepsOf(undefined), 1, 'turnless records read the pooled 0 key')
+  })
+
+  test('a turn outside the list answers 1 instead of missing', () => {
+    assert.equal(turnStepsOf([req(1, { turn: 1 })])(9), 1)
+    assert.equal(turnStepsOf([])(1), 1)
   })
 })
 
