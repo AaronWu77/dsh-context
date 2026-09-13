@@ -11,10 +11,12 @@ import { makeStackedBar } from '../../../src/client/components/stackedBar'
 import { DICT_EN } from '../../../src/client/i18n'
 import { UNKNOWN_TOOL_SOURCE, type ContextHeaders, type ContextTimeline, type HeaderEpochContent, type RequestRecord, type SurfaceNode } from '../../../src/shared/types'
 import { headersOf, type ConversationNodeLike, type ImageLoader } from '../../../src/client/services'
+import { createContextSettings } from '../../../src/client/settings'
 import { click, flush, hover, makeKit, mount, query, queryAll, text, unhover, type Mounted } from '../helpers/kit'
 
 const kit = makeKit()
-const Browser = makeContextBrowser(kit, makeStackedBar(kit))
+const settings = createContextSettings()
+const Browser = makeContextBrowser(kit, makeStackedBar(kit), settings)
 
 // Category row order is CATS: system, tools, user, inject, assistant, tool.
 const ROW = { system: 0, tools: 1, user: 2, inject: 3, assistant: 4, tool: 5 } as const
@@ -642,6 +644,7 @@ describe('ContextBrowser tool schemas', () => {
   const lazyProps = () => props({ data, headers, fetchHeader: () => Promise.resolve(content) })
 
   test('rows rank by token price; the schema narrowing matrix renders', async () => {
+    settings.set('defaultToolSort', 'size')
     const m = await mount(h(Browser, lazyProps()))
     await click(catRow(m, 'tools'))
     await flush()
@@ -692,9 +695,11 @@ describe('ContextBrowser tool schemas', () => {
     await click(elemRows(m)[0])
     assert.equal(queryAll(m.container, '.lc-br-content').length, 0)
     await m.unmount()
+    settings.set('defaultToolSort', 'count')
   })
 
   test('a text filter and the size/name sort narrow and re-rank the rows', async () => {
+    settings.set('defaultToolSort', 'size')
     const m = await mount(h(Browser, lazyProps()))
     await click(catRow(m, 'tools'))
     await flush()
@@ -735,11 +740,13 @@ describe('ContextBrowser tool schemas', () => {
     await click(sortBtns[0])
     assert.deepEqual(names(), ['mega', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'rho', 'omega'])
     await m.unmount()
+    settings.set('defaultToolSort', 'count')
   })
 
   test('count sort ranks by call hits on the shown surface; collapsed rows carry the tally', async () => {
     // Sizes anti-correlate with hits so the count ranking is visibly its own
     // order; delta ties gamma's tally and wins the name tie-break.
+    settings.set('defaultToolSort', 'size')
     const hitHeaders: ContextHeaders = { headers: [{ seq: 1, time: 1, systemTokens: 3, tools: [
       { name: 'alpha', tokens: 100 },
       { name: 'beta', tokens: 10 },
@@ -782,6 +789,49 @@ describe('ContextBrowser tool schemas', () => {
     assert.deepEqual(names(), ['beta', 'alpha', 'delta', 'gamma'])
     assert.deepEqual(hits(), ['×1', '×0', '×0', '×0'])
     await m.unmount()
+    settings.set('defaultToolSort', 'count')
+  })
+
+  test('the mount-time default tool sort comes from the plugin settings', async () => {
+    const pair: ContextHeaders = { headers: [{ seq: 1, time: 1, systemTokens: 3, tools: [
+      { name: 'zzz', tokens: 1 },
+      { name: 'aaa', tokens: 100 },
+    ] }] }
+    const data = tl({
+      current: { system: 10, tools: 101, user: 0, inject: 0, assistant: 0, tool: 10, total: 121 },
+      nodes: [node({ seq: 2, cat: 'tool', tool: 'zzz', tokens: 10 })],
+    })
+    const names = (m: Mounted) => elemRows(m).map(r => text(query(r, '.lc-br-preview')))
+    const sortBtns = (container: ParentNode) => queryAll(container, '.lc-br-toolctl .lc-gran-btn')
+    const mountWith = async (sort: string) => {
+      settings.set('defaultToolSort', sort)
+      const m = await mount(h(Browser, props({ data, headers: pair, fetchHeader: () => Promise.resolve({ tools: [] }) })))
+      await click(catRow(m, 'tools'))
+      return m
+    }
+
+    // The schema default: most call hits first (zzz ×1 over aaa ×0).
+    let m = await mountWith('count')
+    assert.ok(sortBtns(m.container)[1].className.includes('lc-gran-on'))
+    assert.deepEqual(names(m), ['zzz', 'aaa'])
+    await m.unmount()
+
+    m = await mountWith('size')
+    assert.ok(sortBtns(m.container)[0].className.includes('lc-gran-on'))
+    assert.deepEqual(names(m), ['aaa', 'zzz'])
+    await m.unmount()
+
+    m = await mountWith('name')
+    assert.ok(sortBtns(m.container)[2].className.includes('lc-gran-on'))
+    assert.deepEqual(names(m), ['aaa', 'zzz'])
+    await m.unmount()
+
+    // In-toolbar toggling never writes the preference back.
+    m = await mountWith('count')
+    await click(sortBtns(m.container)[0])
+    assert.equal(settings.store.getSnapshot().toolSort, 'count')
+    await m.unmount()
+    settings.set('defaultToolSort', 'count')
   })
 
   test('before the epoch content loads, the filter scans names and plugins only', async () => {
@@ -902,6 +952,7 @@ describe('ContextBrowser tool schemas', () => {
   })
 
   test('tool rows tag the registering plugin when attribution exists', async () => {
+    settings.set('defaultToolSort', 'size')
     const attributed: ContextHeaders = {
       headers: [{ seq: 1, time: 1, systemTokens: 3, tools: [
         { name: 'write', tokens: 5, plugin: '@deepseek-ai/dsh-tool-fs' },
@@ -934,6 +985,7 @@ describe('ContextBrowser tool schemas', () => {
     assert.ok(chip.parentElement!.classList.contains('lc-br-elem-row'), 'plugin chip is a single frame, a direct row child')
     assert.equal(queryAll(chip, '.lc-br-tag').length, 0, 'no nested tag wrapper')
     await m.unmount()
+    settings.set('defaultToolSort', 'count')
   })
 
   test('a single-tool category opens its schema row with the category; multi stays collapsed', async () => {

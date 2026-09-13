@@ -6,6 +6,7 @@ import { CATS, CAT_COLOR, partsOf } from '../categories'
 import { dnaOf } from '../dna'
 import type { DnaItem } from '../dna'
 import type { ContentFetcher, ConversationNodeLike, HeaderFetcher } from '../services'
+import type { ContextSettings, DefaultToolSort } from '../settings'
 import type { ViewKit } from '../viewkit'
 import { blockSummaryOf, callSummaryOf, parseCallArgs } from '../callSummary'
 import type { DetailState } from '../timelineSource'
@@ -581,6 +582,7 @@ const DNA_MIN_BAND = 0.35
 export function makeContextBrowser(
   kit: ViewKit,
   StackedBar: (props: StackedBarProps) => ReactElement,
+  settings: ContextSettings,
 ): (props: ContextBrowserProps) => ReactElement {
   const { t, fmt, fmtTime, catLabel } = kit
   const DetailNote = makeDetailNote(kit)
@@ -602,7 +604,9 @@ export function makeContextBrowser(
     // it, while step picks (setOpenCat(null) below) keep it so the same lens
     // compares epochs.
     const [rowQuery, setRowQuery] = useState('')
-    const [toolSort, setToolSort] = useState<'size' | 'count' | 'name'>('size')
+    // Mount-time default from the plugin settings card; in-toolbar toggling
+    // stays mount-local and never writes back.
+    const [toolSort, setToolSort] = useState<DefaultToolSort>(() => settings.defaultToolSort())
     // DNA mode: the composition bar redraws as ONE band per context item in prompt order (dna.ts), hovered/clicked per item.
     const [dna, setDna] = useState(false)
     const [dnaKey, setDnaKey] = useState<string | null>(null)
