@@ -72,7 +72,8 @@ describe('candidates', () => {
   test('an empty query yields the context candidate', async () => {
     const { source } = setup()
     const candidates = await source.candidates({ sessionId: 'cmd-empty' }, { query: '', position: 'leading', signal: SIGNAL })
-    assert.deepEqual(candidates, [{ name: 'context', description: DICT_EN['cmd.desc'] }])
+    // The localized section replaces the menu's raw source-name title row.
+    assert.deepEqual(candidates, [{ name: 'context', section: DICT_EN['cmd.section'], description: DICT_EN['cmd.desc'] }])
   })
 
   test('a matching prefix yields the candidate; a mismatch yields none', async () => {

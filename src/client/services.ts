@@ -708,6 +708,8 @@ export function headersOf(value: unknown): ContextHeaders | null {
 
 export interface TriggerCandidate {
   name: string
+  /** Visual heading of this candidate's group; its presence suppresses the menu's source-title row. */
+  section?: string
   description?: string
 }
 
