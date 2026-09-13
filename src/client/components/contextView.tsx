@@ -540,7 +540,7 @@ export function makeContextView(
           <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)]">
             <div className="lc-card-title">
               <span className="lc-card-title-text">{t('events.title')}</span>
-              <div className="lc-kinds">
+              <div className="lc-kinds @max-[380px]/lc-card:flex-wrap">
                 {EVENT_KINDS.map((k) => {
                   const n = kindCounts[k]
                   return (
