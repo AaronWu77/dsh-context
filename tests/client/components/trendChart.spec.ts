@@ -158,8 +158,8 @@ describe('TrendChart empty history', () => {
 
 describe('TrendChart step granularity, total mode', () => {
   test('stacks per-category segments in CATS order with real colors and proportional px heights', async () => {
-    const r1 = req(1, { turn: 1, step: 0 })
-    const r2 = req(2, { turn: 1, step: 1, system: 200, tools: 100, user: 60, inject: 40, assistant: 80, tool: 120, total: 600 })
+    const r1 = req(1, { turn: 1, step: 0, skill: 40, total: 340 })
+    const r2 = req(2, { turn: 1, step: 1, system: 200, tools: 100, user: 60, inject: 40, skill: 60, assistant: 80, tool: 120, total: 660 })
     const r3 = req(3, { turn: undefined, step: 0, user: 0, total: 280 })
     const m = await mount(h(TrendChart, propsOf([r1, r2, r3])))
 
@@ -167,14 +167,15 @@ describe('TrendChart step granularity, total mode', () => {
     assert.equal(bs.length, 3)
     assert.deepEqual(bs.map(b => b.getAttribute('data-seq')), ['1', '2', '3'])
 
-    // Six priced categories, in CATS order, with the shipped colors; max bar segments scale against maxTotal=600.
+    // Seven priced categories, in CATS order, with the shipped colors; max bar segments scale against maxTotal=660.
     const segs1 = queryAll(bs[0], '.lc-bar-stack > div')
-    assert.equal(segs1.length, 6)
+    assert.equal(segs1.length, 7)
     for (let i = 0; i < CATS.length; i++) assertColor(segs1[i].style.background, CATS[i].color)
-    assert.equal(segs1[0].style.height, `${Math.round(100 / 600 * CHART_H)}px`)
-    assert.equal(segs1[5].style.height, `${Math.round(60 / 600 * CHART_H)}px`)
+    assert.equal(segs1[0].style.height, `${Math.round(100 / 660 * CHART_H)}px`)
+    assert.equal(segs1[4].style.height, `${Math.round(40 / 660 * CHART_H)}px`)
+    assert.equal(segs1[6].style.height, `${Math.round(60 / 660 * CHART_H)}px`)
     const segs2 = queryAll(bs[1], '.lc-bar-stack > div')
-    assert.equal(segs2[0].style.height, `${Math.round(200 / 600 * CHART_H)}px`)
+    assert.equal(segs2[0].style.height, `${Math.round(200 / 660 * CHART_H)}px`)
 
     // Zero-value categories are skipped entirely (r3.user = 0 → five segments, no user-green segment).
     const segs3 = queryAll(bs[2], '.lc-bar-stack > div')
@@ -182,10 +183,10 @@ describe('TrendChart step granularity, total mode', () => {
     assert.ok(![...segs3].some(s => s.style.background.includes('var(--color-green-500)')))
 
     // Total-mode axis: full quartile graduation — max, ¾, ½, ¼, 0.
-    assert.equal(query(m.container, '.lc-axis-top').textContent, '600')
-    assert.equal(query(m.container, '.lc-axis-q3').textContent, '450')
-    assert.equal(query(m.container, '.lc-axis-mid').textContent, '300')
-    assert.equal(query(m.container, '.lc-axis-q1').textContent, '150')
+    assert.equal(query(m.container, '.lc-axis-top').textContent, '660')
+    assert.equal(query(m.container, '.lc-axis-q3').textContent, '495')
+    assert.equal(query(m.container, '.lc-axis-mid').textContent, '330')
+    assert.equal(query(m.container, '.lc-axis-q1').textContent, '165')
     assert.equal(query(m.container, '.lc-axis-bot').textContent, '0')
 
     // Turn strip: turn 1 spans two step columns (2*16-2 = 30px), the turnless request lands in group 0 (14px);
@@ -440,7 +441,7 @@ describe('TrendChart selection and hover linking', () => {
 
 describe('TrendChart category hover-link', () => {
   test('segments carry their category key; the container mirrors the shared hover for CSS to light', async () => {
-    const r1 = req(1, { turn: 1, step: 0 })
+    const r1 = req(1, { turn: 1, step: 0, skill: 10 })
     const r2 = req(2, { turn: 1, step: 1, system: 200 })
     const r3 = req(3, { turn: 2, step: 0 })
     const m = await mount(h(TrendChart, propsOf([r1, r2, r3], { hoverCat: 'tools' })))
@@ -458,8 +459,8 @@ describe('TrendChart category hover-link', () => {
     await m.update(h(TrendChart, propsOf([r1, r2, r3], { hoverCat: 'tools' })))
     assert.equal(query(m.container, '.lc-chart').getAttribute('data-catdim'), 'tools')
 
-    // Delta mode: diverging stacks' segments are tagged the same way — an all-shrinking pair hangs all six below the line.
-    const big = req(4, { turn: 3, step: 0, system: 200, tools: 100, user: 60, inject: 40, assistant: 80, tool: 120 })
+    // Delta mode: diverging stacks' segments are tagged the same way — an all-shrinking pair hangs all seven below the line.
+    const big = req(4, { turn: 3, step: 0, system: 200, tools: 100, user: 60, inject: 40, skill: 30, assistant: 80, tool: 120 })
     await m.update(h(TrendChart, propsOf([big, r1], { mode: 'delta', hoverCat: 'user' })))
     const deltaChart = query(m.container, '.lc-chart')
     assert.equal(deltaChart.getAttribute('data-catdim'), 'user')
@@ -483,7 +484,7 @@ describe('TrendChart category focus (the browser open category)', () => {
     const segs1 = queryAll(bs[0], '.lc-bar-stack > div')
     assert.equal(segs1.length, 1)
     assert.equal(segs1[0].getAttribute('data-cat'), 'tool')
-    assertColor(segs1[0].style.background, CATS[5].color)
+    assertColor(segs1[0].style.background, CATS[6].color)
     assert.equal(segs1[0].style.height, `${Math.round(60 / 120 * CHART_H)}px`)
     assert.equal(queryAll(bs[1], '.lc-bar-stack > div')[0].style.height, `${CHART_H}px`)
 

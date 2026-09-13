@@ -743,10 +743,12 @@ export function makeContextBrowser(
 
     // Per-tool call-hit tally over the shown step's assembled surface: one
     // tool-result node (the fold stamps `tool` on a paired result) is one
-    // completed call — the same accounting as the stats' toolCalls.
+    // completed call — the same accounting as the stats' toolCalls. A
+    // `skill`-tool load reclassifies its node into the `skill` bucket but
+    // keeps the tool stamp, so those calls still count here.
     const toolHits = new Map<string, number>()
     for (const n of view.nodes) {
-      if (n.cat === 'tool' && n.tool !== undefined) toolHits.set(n.tool, (toolHits.get(n.tool) ?? 0) + 1)
+      if ((n.cat === 'tool' || n.cat === 'skill') && n.tool !== undefined) toolHits.set(n.tool, (toolHits.get(n.tool) ?? 0) + 1)
     }
     const toolHitsOf = (tool: HeaderTool): number => toolHits.get(tool.name) ?? 0
 
@@ -974,16 +976,23 @@ export function makeContextBrowser(
       // survivors render unchanged.
       const rows = nodes.map((n) => {
         const conv = bySeq.get(n.seq)
-        const rowErr = n.cat === 'tool' && toolErrOf(n, conv).err
+        // A `skill`-tool load reclassifies into the `skill` bucket (issue #66)
+        // but stays a tool result — its failure marking follows the same rule.
+        const rowErr = (n.cat === 'tool' || n.cat === 'skill') && toolErrOf(n, conv).err
         // Tag carries the compact fact (tool name, injection form) — one shared subtle chip style; the preview line carries the text — each
         // fact shown once.
         let tag: string | null = null
         let preview = nodeText(n)
         if (n.cat === 'tool') {
-          // A `skill`-tool result is a loaded skill: label it by NAME so it scans apart from ordinary results; the red dot already marks
-          // failures — no ⚠ suffix needed.
-          tag = n.skill ? t('node.skillTag', { name: n.skill }) : (n.tool ?? '?')
+          tag = n.tool ?? '?'
           preview = callSummaryOf(conv) ?? t('node.toolResult')
+        } else if (n.cat === 'skill') {
+          // Skill content (issue #66): a load/invocation names itself, and a
+          // text-less row (an unjoined load) falls back to the call summary;
+          // the catalog digest carries no name — its form label tags it.
+          tag = n.skill !== undefined ? t('node.skillTag', { name: n.skill }) : t('form.' + (n.form || 'context'))
+          preview = (n.text !== undefined && n.text !== '' ? n.text : null)
+            ?? callSummaryOf(conv) ?? preview
         } else if (n.cat === 'assistant' && Array.isArray(n.calls) && n.calls.length > 0) {
           // Call targets join as a breadcrumb (`bash › write`); the preview carries the reply text, else the first call's own summary for a
           // text-less turn.
@@ -1003,7 +1012,7 @@ export function makeContextBrowser(
           if (imgCount > 0 && openElem !== `n${n.seq}`) {
             tag = t('attach.image') + (imgCount > 1 ? ' ×' + String(imgCount) : '')
           }
-        } else if (n.cat === 'inject' && !n.skill) {
+        } else if (n.cat === 'inject') {
           tag = t('form.' + (n.form || 'context'))
           if (n.text !== undefined && n.text !== '') {
             preview = n.form === 'snapshot' ? t('node.snapshot') + n.text : n.text

@@ -223,24 +223,37 @@ describe('user/message injection records', () => {
 describe('tool/result skill tagging', () => {
   const skillBody = (name: string) => text(`<skill_content name="${name}">instructions</skill_content>`)
 
-  test('a skill-tool result carrying skill content tags the node and records the inject', () => {
+  test('a skill-tool result carrying skill content re-buckets to `skill` and records the inject', () => {
     const { state } = driveTimeline([
       toolCall(1, { callId: 'c1', name: 'skill' }),
       toolResult(2, { callId: 'c1', content: skillBody('pdf') }),
+      assistantMessage(3, { turn: 1, step: 1 }),
     ])
-    const node = state.surface.at(-1)
+    const node = state.surface.at(-2)
     assert.equal(node?.tool, 'skill')
     assert.equal(node?.skill, 'pdf')
+    assert.equal(node?.cat, 'skill')
+    // The price moved from the tool bucket to the skill one (issue #66)…
+    assert.equal(state.sums.tool, 0)
+    assert.equal(state.sums.skill, node?.tokens)
+    // …and the per-request record carries the skill figure in its total.
+    assert.equal(state.requests.at(-1)?.skill, node?.tokens)
+    assert.ok((state.requests.at(-1)?.total ?? 0) >= (node?.tokens ?? 0))
     assert.deepEqual(state.events, [
       { seq: 2, time: state.events[0].time, kind: 'inject', form: 'instructions', sub: 'skill', name: 'pdf', tokens: node?.tokens },
     ])
   })
 
-  test('an untraced result (tool/call gone) tags from the wrapper alone', () => {
+  test('an untraced result (tool/call gone) tags from the wrapper alone and keeps its tool identity', () => {
     // No tool/call armed: node.tool resolves to undefined — the content
-    // wrapper is trusted (a missed tag is worse than a content guess).
+    // wrapper is trusted (a missed tag is worse than a content guess). The
+    // `skill` stamp keeps the load countable as a tool call.
     const { state } = driveTimeline([toolResult(1, { callId: 'zz', content: skillBody('xlsx') })])
-    assert.equal(state.surface.at(-1)?.skill, 'xlsx')
+    const node = state.surface.at(-1)
+    assert.equal(node?.skill, 'xlsx')
+    assert.equal(node?.cat, 'skill')
+    assert.equal(node?.tool, 'skill')
+    assert.equal(state.sums.skill, node?.tokens)
     assert.equal(state.events[0].name, 'xlsx')
   })
 

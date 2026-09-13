@@ -46,7 +46,13 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
-export type Category = 'user' | 'inject' | 'assistant' | 'tool'
+/**
+ * The priced surface buckets. `skill` carries every skill-machinery content
+ * the harness injects (issue #66): the `<available_skills>` catalog digest,
+ * a user-explicit `/name` invocation's instructions message, and the content
+ * a `skill`-tool load returns (modeled as a tool result by the harness).
+ */
+export type Category = 'user' | 'inject' | 'skill' | 'assistant' | 'tool'
 
 /**
  * One live system-prompt node (Snapshot.systems) — the harness models the
@@ -141,6 +147,7 @@ export interface Snapshot {
     tools: number
     user: number
     inject: number
+    skill: number
     assistant: number
     tool: number
     total: number
@@ -503,6 +510,13 @@ export interface RequestRecord {
   tool: number
   total: number
   prompt?: number
+  /**
+   * Skill-machinery tokens of this request (the `skill` composition
+   * category — catalog digests, invocation instructions, `skill`-tool
+   * loads). Always written by the current fold; absent on rows folded
+   * before the category existed (read as 0).
+   */
+  skill?: number
   /**
    * Billed cache-read (served) prompt tokens of this request — the
    * hit-rate numerator against `prompt` (input + cacheRead + cacheWrite).

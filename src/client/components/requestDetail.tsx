@@ -76,36 +76,28 @@ export function makeRequestDetail(
     )
   }
 
-  /** One-line identity of a surface node: text preview, call breadcrumb, tool name, or a localized placeholder. */
-  function nodeLine(n: SurfaceNode, conv: ConversationNodeLike | undefined): string {
-    /* v8 ignore if -- chipParts returns for tool cats upstream; only
-       inject-with-skill and drift nodes ever reach nodeLine. Defensive. */
-    if (n.cat === 'tool') return callSummaryOf(conv) ?? (n.tool ?? t('node.toolResult'))
-    if (n.text !== undefined && n.text !== '') return n.text
-    if (n.skill !== undefined) return t('node.skillTag', { name: n.skill })
-    if (n.calls !== undefined && n.calls.length > 0) {
-      const summary = blockSummaryOf(conv)
-      return n.calls.join(' › ') + (summary !== null ? ' · ' + summary : '')
-    }
-    /* v8 ignore if -- chipParts returns for assistant cats upstream. Defensive. */
-    if (n.cat === 'assistant') return t('node.empty')
-    /* v8 ignore if -- inject nodes arrive only WITH a skill (the text/skill
-       arms above return first); inject-without-skill never reaches nodeLine. */
-    if (n.cat === 'inject') return t('form.' + (n.form ?? 'context'))
-    return t('node.nonText')
-  }
-
   /**
    * One line's anatomy — a compact FACT tag plus the preview text, mirroring the Context browser's element rows so a
-   * brief line reads exactly like the browser row its click reveals: tool results tag the tool name (skill results the
-   * skill name), assistant replies tag the call breadcrumb, injections tag the form, user messages tag image attachments.
+   * brief line reads exactly like the browser row its click reveals: tool results tag the tool name, skill content
+   * the skill name, assistant replies the call breadcrumb, injections the form, user messages image attachments.
+   * The branches cover the Category union; a hostile cat degrades into the
+   * user tail — a plain text row, never a throw.
    */
   function chipParts(n: SurfaceNode, conv: ConversationNodeLike | undefined): { tag: string | null; text: string } {
     if (n.cat === 'tool') {
       const summary = callSummaryOf(conv)
-      if (n.skill !== undefined) return { tag: t('node.skillTag', { name: n.skill }), text: summary ?? '' }
       if (n.tool !== undefined) return { tag: n.tool, text: summary ?? '' }
       return { tag: null, text: summary ?? t('node.toolResult') }
+    }
+    if (n.cat === 'skill') {
+      // Skill content (issue #66): a load/invocation tags its NAME, the
+      // catalog digest its form label ('目录更新'). A text-less row (the
+      // `skill`-tool load — its content rode the tool result) previews the
+      // call summary, like the tool rows do.
+      return {
+        tag: n.skill !== undefined ? t('node.skillTag', { name: n.skill }) : t('form.' + (n.form ?? 'context')),
+        text: n.text ?? callSummaryOf(conv) ?? '',
+      }
     }
     if (n.cat === 'assistant') {
       // The fold's surface node keeps `calls` only for TEXT-LESS replies; a reply carrying both text and calls recovers
@@ -117,20 +109,18 @@ export function makeRequestDetail(
         text: own !== '' ? own : (names.length > 0 ? '' : t('node.empty')),
       }
     }
-    if (n.cat === 'inject' && n.skill === undefined) {
+    if (n.cat === 'inject') {
       const text = n.text !== undefined && n.text !== ''
         ? (n.form === 'snapshot' ? t('node.snapshot') + n.text : n.text)
         : ''
       return { tag: t('form.' + (n.form ?? 'context')), text }
     }
-    if (n.cat === 'user') {
-      const imgs = n.imgs ?? 0
-      return {
-        tag: imgs > 0 ? t('attach.image') + (imgs > 1 ? ' ×' + String(imgs) : '') : null,
-        text: n.text ?? '',
-      }
+    // The user tail (or a hostile cat): image uploads gain an Image chip.
+    const imgs = n.imgs ?? 0
+    return {
+      tag: imgs > 0 ? t('attach.image') + (imgs > 1 ? ' ×' + String(imgs) : '') : null,
+      text: n.text ?? '',
     }
-    return { tag: null, text: nodeLine(n, conv) }
   }
 
   /** The native-title line for a fact+text pair: 'tag · text', degrading to whichever half exists. */

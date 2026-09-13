@@ -44,7 +44,7 @@ function slimHead(rev: number, over: Record<string, unknown> = {}): Record<strin
   return {
     ok: true,
     model: 'm',
-    current: { system: 1, tools: 2, user: 3, inject: 0, assistant: 4, tool: 5, total: 15 },
+    current: { system: 1, tools: 2, user: 3, inject: 0, skill: 0, assistant: 4, tool: 5, total: 15 },
     counts: { turns: 1, steps: 1, injects: 1, compactions: 0, prunes: 0 },
     last: { seq: 9, total: 15, prompt: 14 },
     detailRev: rev,
@@ -415,7 +415,7 @@ describe('useTimelineSource', () => {
     const inline: ContextTimeline = {
       ok: true,
       model: 'inline-m',
-      current: { system: 1, tools: 2, user: 3, inject: 0, assistant: 4, tool: 5, total: 15 },
+      current: { system: 1, tools: 2, user: 3, inject: 0, skill: 0, assistant: 4, tool: 5, total: 15 },
       requests: [{ seq: 1, time: 0, system: 1, tools: 2, user: 3, inject: 0, assistant: 4, tool: 5, total: 15 }],
       events: [],
       nodes: [],

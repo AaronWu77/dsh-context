@@ -372,7 +372,7 @@ export function timelineOf(value: unknown): ContextTimeline | null {
   // every collection must be a real list. Anything else takes the slow path
   // and is rebuilt into the safe shape below.
   const numericBreakdown = current !== null && typeof current === 'object'
-    && ['system', 'tools', 'user', 'inject', 'assistant', 'tool', 'total']
+    && ['system', 'tools', 'user', 'inject', 'skill', 'assistant', 'tool', 'total']
       .every(k => typeof (current as Record<string, unknown>)[k] === 'number')
   if (numericBreakdown
     && recordsOnly(data.requests)
@@ -405,6 +405,7 @@ export function timelineOf(value: unknown): ContextTimeline | null {
       tools: numOf(safeCurrent.tools),
       user: numOf(safeCurrent.user),
       inject: numOf(safeCurrent.inject),
+      skill: numOf(safeCurrent.skill),
       assistant: numOf(safeCurrent.assistant),
       tool: numOf(safeCurrent.tool),
       total: numOf(safeCurrent.total),

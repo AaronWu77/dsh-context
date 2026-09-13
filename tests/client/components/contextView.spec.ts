@@ -35,7 +35,7 @@ afterEach(() => {
 function timeline(over: Record<string, unknown> = {}): ContextTimeline {
   return {
     ok: true,
-    current: { system: 100, tools: 200, user: 300, inject: 50, assistant: 400, tool: 150, total: 1200 },
+    current: { system: 100, tools: 200, user: 300, inject: 50, skill: 0, assistant: 400, tool: 150, total: 1200 },
     requests: [],
     events: [],
     nodes: [],
@@ -429,9 +429,10 @@ describe('ContextView — interactions', () => {
     // Five segments on the bar: richTimeline carries no injects, so inject renders none.
     assert.equal(queryAll(m.container, '.lc-bar[data-seq="4"] .lc-bar-stack > .lc-cat-seg').length, 5)
 
-    // Expanding the browser's assistant category focuses every bar on it — one segment per bar, the axis
+    // Expanding the browser's assistant category (row 5 — row 4 is the empty
+    // skill bucket) focuses every bar on it — one segment per bar, the axis
     // rescaled to the category's own max (20/60/80; the first rides its provider-prompt anchor to 21).
-    await click(queryAll(m.container, '.lc-br-cat-row')[4])
+    await click(queryAll(m.container, '.lc-br-cat-row')[5])
     assert.equal(text(query(m.container, '.lc-axis-top')), '80')
     const segs = queryAll(m.container, '.lc-bar .lc-bar-stack > .lc-cat-seg')
     assert.equal(segs.length, 3)
@@ -440,7 +441,7 @@ describe('ContextView — interactions', () => {
       'the card subtitle names the focused category')
 
     // Collapsing the category restores the whole composition and drops the subtitle.
-    await click(queryAll(m.container, '.lc-br-cat-row')[4])
+    await click(queryAll(m.container, '.lc-br-cat-row')[5])
     assert.equal(text(query(m.container, '.lc-axis-top')), '420')
     assert.equal(queryAll(m.container, '.lc-bar[data-seq="4"] .lc-bar-stack > .lc-cat-seg').length, 5)
     const trendCard = queryAll(m.container, '.lc-card').find(c => text(c).includes(DICT_EN['trend.title']))

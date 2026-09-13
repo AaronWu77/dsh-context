@@ -22,7 +22,7 @@ const settings = createContextSettings()
 function timeline(over: Record<string, unknown> = {}): ContextTimeline {
   return {
     ok: true,
-    current: { system: 1, tools: 2, user: 3, inject: 4, assistant: 5, tool: 6, total: 21 },
+    current: { system: 1, tools: 2, user: 3, inject: 4, skill: 0, assistant: 5, tool: 6, total: 21 },
     requests: [],
     events: [],
     nodes: [],

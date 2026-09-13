@@ -198,7 +198,7 @@ describe('AgentGraph — the family tree', () => {
     assert.ok(!text(inspector).includes('click to open'))
 
     // The legend lists all six categories plus the free-window and running-edge keys.
-    assert.equal(queryAll(m.container, '.lc-agents-legend-item').length, 8)
+    assert.equal(queryAll(m.container, '.lc-agents-legend-item').length, 9)
 
     // The stage cancels a horizontal swipe it cannot consume, so the browser never reads it as a history swipe
     // (jsdom reports zero scroll metrics, so a horizontal-dominant gesture always sits at the edge).
