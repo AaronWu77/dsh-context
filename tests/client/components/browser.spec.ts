@@ -701,7 +701,7 @@ describe('ContextBrowser tool schemas', () => {
     const input = query<HTMLInputElement>(m.container, '.lc-br-tool-search')
     assert.equal(input.placeholder, 'Filter by name, description, or parameters…')
     const sortBtns = queryAll(m.container, '.lc-br-toolctl .lc-gran-btn')
-    assert.equal(sortBtns.length, 2)
+    assert.equal(sortBtns.length, 3)
     assert.ok(sortBtns[0].className.includes('lc-gran-on'), 'size is the default sort')
     const names = () => elemRows(m).map(r => text(query(r, '.lc-br-preview')))
 
@@ -724,11 +724,63 @@ describe('ContextBrowser tool schemas', () => {
     assert.equal(elemRows(m).length, 9)
 
     // Name sort re-ranks alphabetically; size restores the token-price ranking.
+    await click(sortBtns[2])
+    assert.ok(sortBtns[2].className.includes('lc-gran-on'))
+    assert.deepEqual(names(), ['beta', 'delta', 'epsilon', 'gamma', 'mega', 'omega', 'rho', 'theta', 'zeta'])
+    // Count sort with no tool-result nodes on the surface: all tallies tie at
+    // zero and break by name.
     await click(sortBtns[1])
     assert.ok(sortBtns[1].className.includes('lc-gran-on'))
     assert.deepEqual(names(), ['beta', 'delta', 'epsilon', 'gamma', 'mega', 'omega', 'rho', 'theta', 'zeta'])
     await click(sortBtns[0])
     assert.deepEqual(names(), ['mega', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'rho', 'omega'])
+    await m.unmount()
+  })
+
+  test('count sort ranks by call hits on the shown surface; collapsed rows carry the tally', async () => {
+    // Sizes anti-correlate with hits so the count ranking is visibly its own
+    // order; delta ties gamma's tally and wins the name tie-break.
+    const hitHeaders: ContextHeaders = { headers: [{ seq: 1, time: 1, systemTokens: 3, tools: [
+      { name: 'alpha', tokens: 100 },
+      { name: 'beta', tokens: 10 },
+      { name: 'gamma', tokens: 30 },
+      { name: 'delta', tokens: 20 },
+    ] }] }
+    const data = tl({
+      current: { system: 10, tools: 160, user: 0, inject: 0, assistant: 10, tool: 80, total: 260 },
+      requests: [req({ seq: 4, turn: 1, step: 0 })],
+      nodes: [
+        node({ seq: 2, cat: 'assistant', tokens: 10 }),
+        node({ seq: 3, cat: 'tool', tool: 'beta', tokens: 20 }),
+        node({ seq: 5, cat: 'tool', tool: 'beta', tokens: 20 }),
+        node({ seq: 6, cat: 'tool', tool: 'gamma', tokens: 20 }),
+        node({ seq: 7, cat: 'tool', tool: 'delta', tokens: 20 }),
+        // An unpaired result (no name stamped by the fold) hits nothing.
+        node({ seq: 8, cat: 'tool', tokens: 20 }),
+      ],
+    })
+    const m = await mount(h(Browser, props({ data, headers: hitHeaders, fetchHeader: () => Promise.resolve({ tools: [] }) })))
+    await click(catRow(m, 'tools'))
+    await flush()
+    const names = () => elemRows(m).map(r => text(query(r, '.lc-br-preview')))
+    const hits = () => elemRows(m).map(r => text(query(r, '.lc-br-hits')))
+    // Size default; every collapsed row carries its tally (0 = never called).
+    assert.deepEqual(names(), ['alpha', 'gamma', 'delta', 'beta'])
+    assert.deepEqual(hits(), ['×0', '×1', '×1', '×2'])
+    assert.equal(query(m.container, '.lc-br-hits').title, 'Times this tool was called and answered within the shown step’s context')
+    // Count sort: hits desc, ties break by name (delta over gamma).
+    const sortBtns = queryAll(m.container, '.lc-br-toolctl .lc-gran-btn')
+    await click(sortBtns[1])
+    assert.deepEqual(names(), ['beta', 'delta', 'gamma', 'alpha'])
+    assert.deepEqual(hits(), ['×2', '×1', '×1', '×0'])
+    // Picking a past step re-tallies over THAT step's assembled surface:
+    // only seq < 4 assembles, so beta drops to its one early call; the
+    // zero-hit tools order by name.
+    await pickStep(m, '4')
+    await click(catRow(m, 'tools'))
+    await flush()
+    assert.deepEqual(names(), ['beta', 'alpha', 'delta', 'gamma'])
+    assert.deepEqual(hits(), ['×1', '×0', '×0', '×0'])
     await m.unmount()
   })
 
