@@ -35,6 +35,7 @@ const surfaceNodeSchema = z.object({
   imgs: z.number().int().nonnegative().optional(),
   gone: z.number().int().nonnegative().optional(),
   form: z.string().optional(),
+  name: z.string().optional(),
   text: z.string().optional(),
   tool: z.string().optional(),
   err: z.boolean().optional(),

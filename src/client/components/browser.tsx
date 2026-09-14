@@ -563,6 +563,15 @@ function byCatOf(asm: Assembled): Partial<Record<Category, SurfaceNode[]>> {
   return m
 }
 
+/**
+ * The producer identity a fold-stamped injection node carries
+ * (shared/types.ts SurfaceNode.name): '' when absent or drift-typed — the
+ * delivered payload is untrusted, so rows re-prove it before rendering.
+ */
+function nodeNameOf(n: SurfaceNode): string {
+  return typeof n.name === 'string' ? n.name : ''
+}
+
 function countOf(asm: Assembled, byCat: Partial<Record<Category, SurfaceNode[]>>, c: string): number {
   if (c === 'system') return asm.system !== null ? 1 : 0
   if (c === 'tools') return asm.header !== null ? asm.header.tools.length : 0
@@ -973,7 +982,8 @@ export function makeContextBrowser(
       const nodes = (byCat[c as Category] ?? []).slice().reverse()
       // Derive each row's display facts first so the text filter scans exactly
       // what the rows show (tag + preview) at zero extra derivation cost; the
-      // survivors render unchanged.
+      // survivors render unchanged. Identity-labeled injection rows keep their
+      // folded content out of the preview, so the filter scans `text` too.
       const rows = nodes.map((n) => {
         const conv = bySeq.get(n.seq)
         // A `skill`-tool load reclassifies into the `skill` bucket (issue #66)
@@ -983,15 +993,18 @@ export function makeContextBrowser(
         // fact shown once.
         let tag: string | null = null
         let preview = nodeText(n)
+        const id = nodeNameOf(n)
         if (n.cat === 'tool') {
           tag = n.tool ?? '?'
           preview = callSummaryOf(conv) ?? t('node.toolResult')
         } else if (n.cat === 'skill') {
           // Skill content (issue #66): a load/invocation names itself, and a
           // text-less row (an unjoined load) falls back to the call summary;
-          // the catalog digest carries no name — its form label tags it.
+          // the catalog digest carries no name — its form label tags it and
+          // the stamped source identity (e.g. `skill-catalog`) previews.
           tag = n.skill !== undefined ? t('node.skillTag', { name: n.skill }) : t('form.' + (n.form || 'context'))
-          preview = (n.text !== undefined && n.text !== '' ? n.text : null)
+          preview = (n.skill === undefined && id !== '' ? id : null)
+            ?? (n.text !== undefined && n.text !== '' ? n.text : null)
             ?? callSummaryOf(conv) ?? preview
         } else if (n.cat === 'assistant' && Array.isArray(n.calls) && n.calls.length > 0) {
           // Call targets join as a breadcrumb (`bash › write`); the preview carries the reply text, else the first call's own summary for a
@@ -1014,7 +1027,12 @@ export function makeContextBrowser(
           }
         } else if (n.cat === 'inject') {
           tag = t('form.' + (n.form || 'context'))
-          if (n.text !== undefined && n.text !== '') {
+          if (id !== '') {
+            // The source identity the events card names (plugin id, reconciled
+            // instruction files, durable kind) — more scannable than the raw
+            // content, which stays one expand away.
+            preview = id
+          } else if (n.text !== undefined && n.text !== '') {
             preview = n.form === 'snapshot' ? t('node.snapshot') + n.text : n.text
           }
         }
@@ -1022,7 +1040,8 @@ export function makeContextBrowser(
       })
       const q = rowQuery.trim().toLowerCase()
       const shown = q === '' ? rows : rows.filter(r =>
-        (r.tag ?? '').toLowerCase().includes(q) || r.preview.toLowerCase().includes(q))
+        (r.tag ?? '').toLowerCase().includes(q) || r.preview.toLowerCase().includes(q)
+        || (typeof r.n.text === 'string' && r.n.text.toLowerCase().includes(q)))
       // The toolbar stays mounted on an empty match, or the filter could
       // never be cleared from the UI.
       const rowctl = <RowToolbar value={rowQuery} placeholder={t('browser.search.' + c)} onChange={setRowQuery} />

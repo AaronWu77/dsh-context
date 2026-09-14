@@ -489,6 +489,14 @@ export interface SurfaceNode {
    */
   gone?: number
   form?: string
+  /**
+   * The producer identity the matching inject event names (host pricing.ts
+   * `injectionSourceName`: the plugin id, the reconciled instruction files,
+   * or the durable kind). Stamped on injection nodes alongside the event, so
+   * the browser rows label them the way the events card does; absent when the
+   * source carries no readable identity or the node predates the stamp.
+   */
+  name?: string
   text?: string
   tool?: string
   err?: boolean

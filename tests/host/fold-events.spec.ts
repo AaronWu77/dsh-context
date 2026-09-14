@@ -170,6 +170,8 @@ describe('user/message injection records', () => {
     assert.equal(state.events.length, 1)
     assert.equal(state.events[0].form, 'context')
     assert.equal(state.events[0].name, 'plugin')
+    // The same identity rides the surface node for the browser rows.
+    assert.equal(state.surface[0].name, 'plugin')
   })
 
   test('skill-invocation records sub-skill with its name', () => {
@@ -179,6 +181,9 @@ describe('user/message injection records', () => {
     assert.equal(state.events[0].sub, 'skill')
     assert.equal(state.events[0].name, 'code-review')
     assert.equal(state.events[0].form, 'skill')
+    // The skill name already labels the node (`skill`); no duplicate stamp.
+    assert.ok(!('name' in state.surface[0]))
+    assert.equal(state.surface[0].skill, 'code-review')
   })
 
   test('a nameless skill-invocation records ?', () => {
@@ -195,6 +200,7 @@ describe('user/message injection records', () => {
     assert.equal(state.events.length, 1)
     assert.ok(!('name' in state.events[0]), 'empty producer label stays absent')
     assert.equal(state.events[0].detail, 'heads up')
+    assert.ok(!('name' in state.surface[0]), 'the node stays unstamped too')
   })
 
   test('a notice with an empty summary records no detail', () => {
@@ -202,6 +208,7 @@ describe('user/message injection records', () => {
       userMessage(1, text('note'), { kind: 'plugin', plugin: 'dsh-x', form: 'notice', summary: '' }),
     ])
     assert.equal(state.events[0].name, 'dsh-x')
+    assert.equal(state.surface[0].name, 'dsh-x')
     assert.ok(!('detail' in state.events[0]))
   })
 
@@ -210,7 +217,19 @@ describe('user/message injection records', () => {
       userMessage(1, text('catalog'), { kind: 'skill-catalog', form: 'catalog' }),
     ])
     assert.equal(state.events[0].name, 'skill-catalog')
+    assert.equal(state.surface[0].name, 'skill-catalog')
     assert.ok(!('detail' in state.events[0]))
+  })
+
+  test('an agent-instructions source names its reconciled files on the event and the node', () => {
+    const { state } = driveTimeline([
+      userMessage(1, text('instructions'), {
+        kind: 'agent-instructions', form: 'instructions',
+        changes: [{ path: 'AGENTS.md' }, { path: 'AGENTS.md' }, { path: '' }, null],
+      }),
+    ])
+    assert.equal(state.events[0].name, 'AGENTS.md')
+    assert.equal(state.surface[0].name, 'AGENTS.md')
   })
 
   test('a non-injection user message records no event', () => {

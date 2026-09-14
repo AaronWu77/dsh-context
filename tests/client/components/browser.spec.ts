@@ -1315,12 +1315,46 @@ describe('ContextBrowser message categories', () => {
     await m.unmount()
   })
 
+  test('inject rows label the fold-stamped source identity; the folded text stays filterable', async () => {
+    const data = tl({
+      current: { system: 0, tools: 0, user: 0, inject: 45, skill: 0, assistant: 0, tool: 0, total: 45 },
+      nodes: [
+        // Stamped rows: the identity the events card names replaces the raw
+        // content preview (which stays one expand away).
+        node({ seq: 50, cat: 'inject', tokens: 9, form: 'snapshot', name: '@deepseek-ai/dsh-system-prompt', text: 'policy sections' }),
+        node({ seq: 51, cat: 'inject', tokens: 9, form: 'instructions', name: 'AGENTS.md', text: '<system-reminder> instructions' }),
+        // Unstamped (rows folded before the stamp existed): content stands.
+        node({ seq: 52, cat: 'inject', tokens: 9, form: 'snapshot', text: 'state' }),
+        // Hostile drift: a non-string / empty stamp degrades to the content.
+        node({ seq: 53, cat: 'inject', tokens: 9, name: 42 as never, text: 'drift body' }),
+        node({ seq: 54, cat: 'inject', tokens: 9, name: '', text: 'empty body' }),
+      ],
+    })
+    const m = await mount(h(Browser, props({ data })))
+    await click(catRow(m, 'inject'))
+    const tags = elemRows(m).map(r => {
+      const tag = r.querySelector<HTMLElement>('.lc-br-tag')
+      return `${tag === null ? '∅' : text(tag)}|${text(query(r, '.lc-br-preview'))}`
+    })
+    assert.ok(tags.includes('State Snapshot|@deepseek-ai/dsh-system-prompt'))
+    assert.ok(tags.includes('Instructions|AGENTS.md'))
+    assert.ok(tags.includes('State Snapshot|Snapshot: state'))
+    assert.ok(tags.includes('Context Injection|drift body'))
+    assert.ok(tags.includes('Context Injection|empty body'))
+    // The folded content left the preview but stays in the filter's lens.
+    await typeToolSearch(m, 'policy sections')
+    assert.deepEqual(elemRows(m).map(r => text(query(r, '.lc-br-preview'))), ['@deepseek-ai/dsh-system-prompt'])
+    await typeToolSearch(m, 'AGENTS.md')
+    assert.equal(elemRows(m).length, 1)
+    await m.unmount()
+  })
+
   test('skill rows: loads/invocations name themselves, the catalog tags its form', async () => {
     const convNodes: ConversationNodeLike[] = [
       { kind: 'tool-result', seq: 72, call: { name: 'skill', argsRaw: '{"description":"grill the plan"}' }, content: [{ type: 'text', text: 'skill body' }] },
     ]
     const data = tl({
-      current: { system: 0, tools: 0, user: 0, inject: 0, skill: 31, assistant: 0, tool: 0, total: 31 },
+      current: { system: 0, tools: 0, user: 0, inject: 0, skill: 40, assistant: 0, tool: 0, total: 40 },
       nodes: [
         // An invocation message previews its own text; the catalog digest tags
         // its form; the `skill`-tool load (no node text) previews the call.
@@ -1329,14 +1363,16 @@ describe('ContextBrowser message categories', () => {
         node({ seq: 72, cat: 'skill', tokens: 9, tool: 'skill', skill: 'grilling' }),
         // Hostile drift: a skill node with neither a name nor a form.
         node({ seq: 73, cat: 'skill', tokens: 4 }),
+        // A stamped catalog digest previews its source identity, not the digest text.
+        node({ seq: 74, cat: 'skill', tokens: 9, form: 'catalog', name: 'skill-catalog', text: 'digest body' }),
       ],
     })
     const m = await mount(h(Browser, props({ data, convNodes })))
     assert.ok(text(catRow(m, 'skill')).includes('Skill Injections'))
-    assert.ok(text(catRow(m, 'skill')).includes('4 Items'))
+    assert.ok(text(catRow(m, 'skill')).includes('5 Items'))
     await click(catRow(m, 'skill'))
     const rows = elemRows(m)
-    assert.equal(rows.length, 4)
+    assert.equal(rows.length, 5)
     const tags = rows.map(r => {
       const tag = r.querySelector<HTMLElement>('.lc-br-tag')
       return `${tag === null ? '∅' : text(tag)}|${text(query(r, '.lc-br-preview'))}`
@@ -1345,6 +1381,7 @@ describe('ContextBrowser message categories', () => {
     assert.ok(tags.includes('Catalog Update|Catalog Update'), 'the textless catalog digest tags its form')
     assert.ok(tags.includes('Skill · grilling|grill the plan'), 'the load previews its call summary')
     assert.ok(tags.includes('Context Injection|Context Injection'), 'a nameless, formless skill row degrades to the context label')
+    assert.ok(tags.includes('Catalog Update|skill-catalog'), 'a stamped catalog digest previews its source identity')
     await m.unmount()
   })
 })

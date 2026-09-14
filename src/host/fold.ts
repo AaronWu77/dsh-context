@@ -1034,7 +1034,13 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
             rec.name = typeof source.name === 'string' ? source.name : '?'
           } else {
             const label = injectionSourceName(source)
-            if (label !== '') rec.name = label
+            if (label !== '') {
+              rec.name = label
+              // The same identity rides the surface node (this event's own
+              // seq), so the browser rows label the injection the way this
+              // event row does — the node's retention then matches the label.
+              node.name = label
+            }
             // A notice carries the producer's bounded one-line account; show it after the source name, as the dsh transcript row does.
             if (source.form === 'notice' && typeof source.summary === 'string' && source.summary !== '') {
               rec.detail = source.summary
