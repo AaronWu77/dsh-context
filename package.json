@@ -45,7 +45,7 @@
     "coverage": "vitest run --coverage",
     "release": "bash scripts/publish.sh",
     "social-preview": "node docs/social-preview/generate.ts",
-    "prepare": "husky"
+    "prepare": "husky && tsdown"
   },
   "dsh": {
     "bundle": {
