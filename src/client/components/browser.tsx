@@ -1170,7 +1170,9 @@ export function makeContextBrowser(
               <div key={c.key} className={'lc-br-cat' + (openable ? '' : ' lc-br-cat-empty')}>
                 <button
                   type="button"
-                  className={'lc-br-cat-row hover:bg-(--dsw-alias-interactive-bg-hover)' + (linked && props.hoverKey === c.key ? ' lc-br-cat-on' : '')}
+                  className={'lc-br-cat-row hover:bg-(--dsw-alias-interactive-bg-hover)'
+                    + (open ? ' lc-br-cat-open' : '')
+                    + (linked && props.hoverKey === c.key ? ' lc-br-cat-on' : '')}
                   /* v8 ignore start -- the handlers exist only when linked,
                      and linked already requires onHoverKey defined (above). */
                   onMouseEnter={linked ? () => { if (props.onHoverKey !== undefined) props.onHoverKey(c.key) } : undefined}

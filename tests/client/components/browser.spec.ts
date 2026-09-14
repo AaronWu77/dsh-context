@@ -314,6 +314,8 @@ describe('ContextBrowser header epochs', () => {
     const body = query(m.container, '.lc-br-body')
     assert.ok(text(body).includes('SYS B'), 'the newest epoch’s prompt shows on the live surface')
     assert.ok(text(body).includes('2 lines'), 'line count rides the section head')
+    // The open header holds the hover tint, every category alike.
+    assert.ok(catRow(m, 'system').className.includes('lc-br-cat-open'))
     // The single system row is already expanded.
     assert.equal(queryAll(m.container, '.lc-br-content').length, 1)
     assert.ok(queryAll(m.container, '.lc-ts-desc-md').length >= 1, 'markdown view by default')
@@ -326,6 +328,7 @@ describe('ContextBrowser header epochs', () => {
     assert.ok(queryAll(m.container, '.lc-ts-desc-md').length >= 1, 'markdown restored')
     await click(catRow(m, 'system'))
     assert.equal(queryAll(m.container, '.lc-br-body').length, 0)
+    assert.ok(!catRow(m, 'system').className.includes('lc-br-cat-open'))
     await m.unmount()
   })
 
