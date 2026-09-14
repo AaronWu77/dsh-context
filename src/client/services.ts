@@ -708,9 +708,13 @@ export function headersOf(value: unknown): ContextHeaders | null {
 
 export interface TriggerCandidate {
   name: string
+  /** Display title; the name itself when absent (a differing title renders the name as a trailing alias). */
+  label?: string
   /** Visual heading of this candidate's group; its presence suppresses the menu's source-title row. */
   section?: string
   description?: string
+  /** Row glyph, rendered at a 16px edge. */
+  icon?: ComponentType<{ size?: number }>
 }
 
 /** Pick-moment snapshot of the trigger token span (draftRev CAS). */
