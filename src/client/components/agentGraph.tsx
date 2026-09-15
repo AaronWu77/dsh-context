@@ -129,18 +129,31 @@ export function makeAgentGraph(
 
     // Nodes with no composition (occupancy-only, or nothing listed at all —
     // the projection cache holds no timeline row for either) fetch their slim
-    // head off the detail channel and re-render composed. The current node is
-    // excluded: the tab's own projections already feed it live.
+    // head off the detail route and re-render composed. The current node is
+    // excluded: the tab's own projections already feed it live. A remount
+    // (tab switch) resets this state but not the factory's promise cache, so
+    // a cached read REPLAYS into the fresh instance — otherwise a fetched
+    // relative would fall back to green on every remount, forever.
     useEffect(() => {
       if (built === null) return
+      const attach = (pending: Promise<ContextTimeline | null>, id: string): void => {
+        void pending.then((head) => {
+          // Same value → same state: the identity bail-out keeps a settled
+          // replay on every snapshot tick from looping.
+          if (head !== null) setLanded(prev => prev.get(id) === head ? prev : new Map(prev).set(id, head))
+        }).catch(() => {})
+      }
       for (const n of built.forest.nodes) {
-        if (n.isCurrent || (n.head !== null && n.head.parts.length > 0) || heads.has(n.id)) continue
+        if (n.isCurrent || (n.head !== null && n.head.parts.length > 0)) continue
+        const cached = heads.get(n.id)
+        if (cached !== undefined) {
+          attach(cached, n.id)
+          continue
+        }
         const fetcher = makeDetailFetcher(ctx, n.id)
         const pending = fetcher !== undefined ? fetcher().then(d => d?.head ?? null) : Promise.resolve(null)
         heads.set(n.id, pending)
-        pending.then((head) => {
-          if (head !== null) setLanded(prev => new Map(prev).set(n.id, head))
-        }).catch(() => {})
+        attach(pending, n.id)
       }
     }, [built])
 

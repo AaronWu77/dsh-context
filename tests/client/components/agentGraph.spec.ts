@@ -435,7 +435,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
    * A programmable global fetch recording its reads: POSTs resolve `value`
    * (or throw, or hold until released).
    */
-  function detailRpc(options: { reject?: boolean; head?: unknown; nullValue?: boolean; defer?: boolean } = {}) {
+  function detailFetch(options: { reject?: boolean; head?: unknown; nullValue?: boolean; defer?: boolean } = {}) {
     const calls: string[] = []
     let release: ((value: unknown) => void) | undefined
     vi.stubGlobal('fetch', async (url: unknown, init: { body: string }) => {
@@ -461,7 +461,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
   }
 
   test('pressure-only relatives fetch their head and re-render composed', async () => {
-    const rpc = detailRpc({ defer: true })
+    const rpc = detailFetch({ defer: true })
     const { View, face } = makeFetchingView()
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
 
@@ -469,6 +469,14 @@ describe('AgentGraph — cold-relative composition fetch', () => {
     // pressure-only fused ring (arc + free outline).
     assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
     assert.equal(query(m.container, 'g[data-agent="done"]').querySelectorAll('circle.lc-agent-seg').length, 2)
+
+    // A snapshot tick while the read is in flight re-attaches the SAME
+    // pending read; its duplicate landing settles on the identity bail-out
+    // instead of re-rendering.
+    await act(async () => {
+      face.setState(family())
+    })
+    await flush()
 
     await act(async () => {
       rpc.release({ ok: true, status: 200, json: async () => ({ ok: true, value: detailValue(composedHead()) }) })
@@ -485,11 +493,20 @@ describe('AgentGraph — cold-relative composition fetch', () => {
     })
     await flush()
     assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
+
+    // A remount (tab switch) resets the instance state but replays the
+    // factory-cached read: the ring recomposes with no new request.
     await m.unmount()
+    const remounted = await mount(h(View, { sessionId: 'root', self: selfStats() }))
+    await flush()
+    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'], 'the cache never re-fetches')
+    const replayed = query(remounted.container, 'g[data-agent="done"]')
+    assert.equal(replayed.querySelectorAll('circle.lc-agent-seg').length, 7, 'the cached head replays into the fresh instance')
+    await remounted.unmount()
   })
 
   test('a failing fetch degrades to the pressure-only ring and never retries', async () => {
-    const rpc = detailRpc({ reject: true })
+    const rpc = detailFetch({ reject: true })
     const { View, face } = makeFetchingView()
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     await flush()
@@ -506,7 +523,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
 
   test('a hostile head drops alone and a null value degrades the same way', async () => {
     for (const options of [{ head: 'garbage' }, { nullValue: true }]) {
-      const rpc = detailRpc(options)
+      const rpc = detailFetch(options)
       const { View } = makeFetchingView()
       const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
       await flush()
@@ -518,7 +535,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
   })
 
   test('a hostile empty session id degrades to the pressure-only ring without fetching', async () => {
-    const rpc = detailRpc({ head: composedHead() })
+    const rpc = detailFetch({ head: composedHead() })
     const face = new FakeSessions({
       root: { displayTitle: 'Main', running: false, updatedAt: 10 },
       '': {
@@ -537,7 +554,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
 
   test('a head with no occupancy anchor still composes from the fold alone', async () => {
     // No pressure on the row: the fetched head's fold total and window carry the ring.
-    const rpc = detailRpc({ head: composedHead(), defer: true })
+    const rpc = detailFetch({ head: composedHead(), defer: true })
     const face = new FakeSessions({
       root: { displayTitle: 'Main', running: false, updatedAt: 10 },
       cold: {

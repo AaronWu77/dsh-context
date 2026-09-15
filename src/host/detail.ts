@@ -159,7 +159,7 @@ export function watchDetailChannel(ctx: Context, bounds: FoldBounds): DetailChan
         path: DETAIL_ROUTE,
         methods: ['POST'],
         requestBody: 'buffered',
-        fetch: request => handler(request),
+        fetch: handler,
       }), 'dsh-context: detail route')
     } catch {
       // A hostile or rejecting registry must not take the plugin down — the
