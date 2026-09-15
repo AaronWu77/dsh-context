@@ -1462,10 +1462,12 @@ export function buildTimelineHead(state: TimelineState): Snapshot {
 
 /**
  * The on-demand detail payload (host/detail.ts serves it off the live fold
- * state): the heavy collections plus the revision marker the head carries.
+ * state): the heavy collections, the slim head at the SAME cut (the Agent
+ * network's cold-node ring fetch renders composition off it), and the
+ * revision marker the head carries.
  */
 export function buildTimelineDetail(state: TimelineState, bounds: FoldBounds): ContextTimelineDetail {
-  return { rev: state.detailRev ?? 0, ...detailCollectionsOf(state, bounds) }
+  return { rev: state.detailRev ?? 0, head: buildTimelineHead(state), ...detailCollectionsOf(state, bounds) }
 }
 
 /**

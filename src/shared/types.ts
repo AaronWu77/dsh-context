@@ -259,6 +259,17 @@ export interface Snapshot {
  */
 export interface ContextTimelineDetail {
   rev: number
+  /**
+   * The slim wire head at the SAME fold cut as the collections: the
+   * composition scalars (`current`), the window/model envelope, and the
+   * precomputed counts. Sessions listed cold (never attached since the
+   * requesting unit last changed) carry no `contextTimeline` projection row
+   * for the browser's list reads, so the Agent network card fetches this
+   * head per node to render their composition rings. The host always serves
+   * it; optional so a payload missing it still serves the collections (the
+   * detail cards) and only the ring composition degrades.
+   */
+  head?: ContextTimeline
   requests: RequestRecord[]
   events: ContextEventRecord[]
   nodes: SurfaceNode[]

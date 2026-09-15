@@ -29,6 +29,7 @@ const kit = makeKit()
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 
@@ -1238,13 +1239,10 @@ describe('ContextView — the split generation (slim head + detail channel)', ()
     }
   }
 
-  /** A ctx whose connection.rpc.call serves (or fails) the detail endpoint. */
+  /** Stub the global fetch to serve (or fail) the plugin's detail route. */
   function slimCtx(serve: () => Promise<unknown>): TestClientCtx {
-    return new TestClientCtx({
-      services: {
-        connection: { rpc: { call: (_channel: string, _endpoint: string, _payload: unknown) => serve() } },
-      },
-    })
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => await serve() }))
+    return new TestClientCtx()
   }
 
   async function until(fn: () => boolean, message: string): Promise<void> {
@@ -1316,31 +1314,28 @@ describe('ContextView — the split generation (slim head + detail channel)', ()
 
 describe('ContextView — the op-log generation (fileOps on the detail payload)', () => {
   test('the File Activity card renders the fold-derived ops, no conversation join needed', async () => {
-    const ctx = new TestClientCtx({
-      services: {
-        connection: {
-          rpc: {
-            call: async () => ({
-              ok: true,
-              value: {
-                rev: 1,
-                requests: [{ seq: 2, turn: 1, step: 1, time: T0, system: 1, tools: 2, user: 3, inject: 0, assistant: 4, tool: 5, total: 15 }],
-                events: [],
-                nodes: [],
-                droppedNodes: 0,
-                archive: [],
-                // The op log covers the full session — the conversation window
-                // join plays no role in this card on this generation.
-                fileOps: [
-                  { seq: 1, path: '/ws/README.md', kind: 'read', tool: 'read', err: false, added: 0, removed: 0, read: { start: 1, count: 12 } },
-                  { seq: 2, path: '/ws/src/a.ts', kind: 'write', tool: 'edit', err: false, added: 3, removed: 1 },
-                ],
-              },
-            }),
-          },
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        value: {
+          rev: 1,
+          requests: [{ seq: 2, turn: 1, step: 1, time: T0, system: 1, tools: 2, user: 3, inject: 0, assistant: 4, tool: 5, total: 15 }],
+          events: [],
+          nodes: [],
+          droppedNodes: 0,
+          archive: [],
+          // The op log covers the full session — the conversation window
+          // join plays no role in this card on this generation.
+          fileOps: [
+            { seq: 1, path: '/ws/README.md', kind: 'read', tool: 'read', err: false, added: 0, removed: 0, read: { start: 1, count: 12 } },
+            { seq: 2, path: '/ws/src/a.ts', kind: 'write', tool: 'edit', err: false, added: 3, removed: 1 },
+          ],
         },
-      },
-    })
+      }),
+    }))
+    const ctx = new TestClientCtx()
     const View = makeView(ctx)
     const m = await mount(h(View, {
       sessionId: 'sv-opslog',
