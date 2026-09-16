@@ -124,7 +124,7 @@ describe('OverviewPanel', () => {
     const ctx = makeCtx({ refresh: () => { pulls++; return Promise.resolve() } })
     const { m } = await openPanel(ctx)
     assert.equal(pulls, 1, 'the baseline re-pull fires on open')
-    assert.ok(text(m.container).includes('Context Dashboard'))
+    assert.ok(text(m.container).includes('Context Insights'))
     // KPI band: 2 sessions in the 30d range, 1750 tokens billed, priced cost, cache hit.
     const labels = queryAll(m.container, '.lc-stat-label').map(el => el.textContent)
     assert.deepEqual(labels.slice(0, 4), ['Active Sessions', 'Tokens Used', 'Cost', 'Cache Hit'])
@@ -343,7 +343,7 @@ describe('OverviewPanel', () => {
       overviewStore.set(true)
     })
     await flush()
-    assert.ok(text(m.container).includes('上下文仪表盘'))
+    assert.ok(text(m.container).includes('上下文洞察'))
     assert.ok(text(m.container).includes('活跃会话'))
     await flush() // the price book lands
     const values = queryAll(m.container, '.lc-stat-value').map(el => el.textContent)

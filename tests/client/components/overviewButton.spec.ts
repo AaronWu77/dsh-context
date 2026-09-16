@@ -22,8 +22,8 @@ const useSessionsOf = (snapshot: unknown) => (<T>(sel: (s: unknown) => T): T => 
 describe('OverviewButton', () => {
   test('the wide column renders icon and label; the rail renders the icon alone', async () => {
     const wide = await mount(h(Button, { wide: true }))
-    assert.equal(query(wide.container, '.lc-ov-entry-label').textContent, 'Context Dashboard')
-    assert.equal(query(wide.container, 'button.lc-ov-entry').getAttribute('aria-label'), 'Context Dashboard')
+    assert.equal(query(wide.container, '.lc-ov-entry-label').textContent, 'Context Insights')
+    assert.equal(query(wide.container, 'button.lc-ov-entry').getAttribute('aria-label'), 'Context Insights')
     await wide.unmount()
 
     const rail = await mount(h(Button, { wide: false }))
@@ -65,7 +65,7 @@ describe('OverviewButton', () => {
   test('the zh locale renders the translated label', async () => {
     const ZhButton = makeOverviewButton(makeKit('zh'))
     const m = await mount(h(ZhButton, { wide: true }))
-    assert.equal(query(m.container, '.lc-ov-entry-label').textContent, '上下文仪表盘')
+    assert.equal(query(m.container, '.lc-ov-entry-label').textContent, '上下文洞察')
     await m.unmount()
   })
 })
