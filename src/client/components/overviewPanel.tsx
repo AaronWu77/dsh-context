@@ -76,7 +76,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     const close = (): void => { overviewStore.set(false) }
     useEscapeClose(open, close)
 
-    const rows = useMemo(() => rowsOfSnapshot(snapshot), [snapshot])
+    const rows = useMemo(() => rowsOfSnapshot(snapshot, wsSnapshot), [snapshot, wsSnapshot])
     const groups = useMemo(() => sessionGroupsOf(wsSnapshot), [wsSnapshot])
 
     // On open, re-pull the list once: host-side backfill rows (a session

@@ -139,6 +139,25 @@ describe('rowsOfSnapshot', () => {
     assert.equal(e.updatedAt, 0, 'a non-numeric stamp zeroes')
   })
 
+  test('archived sessions drop; a hostile archive set fails open', () => {
+    const snap = snapshotOf([
+      ['a', { displayTitle: 'live' }],
+      ['b', { displayTitle: 'archived' }],
+      ['c', { displayTitle: 'kept' }],
+    ])
+    const rows = rowsOfSnapshot(snap, { archivedSessionIds: ['b', 7, null] })
+    assert.ok(rows !== null)
+    assert.deepEqual(rows.map(r => r.id), ['a', 'c'], 'archived ids drop; non-string entries archive nothing')
+    // Fail-open shapes: an absent seat, a bare record, a malformed set, and a
+    // throwing accessor all keep the full list.
+    assert.equal(rowsOfSnapshot(snap)?.length, 3)
+    assert.equal(rowsOfSnapshot(snap, null)?.length, 3)
+    assert.equal(rowsOfSnapshot(snap, 7)?.length, 3)
+    assert.equal(rowsOfSnapshot(snap, {})?.length, 3)
+    assert.equal(rowsOfSnapshot(snap, { archivedSessionIds: 'x' })?.length, 3)
+    assert.equal(rowsOfSnapshot(snap, { get archivedSessionIds() { throw new Error('boom') } })?.length, 3)
+  })
+
   test('projection values are sanitized per row; hostile payloads degrade to nulls', () => {
     const rows = rowsOfSnapshot(snapshotOf([
       ['a', {

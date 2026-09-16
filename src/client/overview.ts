@@ -178,22 +178,41 @@ export function inGroup(row: OverviewRow, group: string, groups: Record<string, 
 }
 
 /**
+ * The workspace snapshot's archived-session set, re-proved: an absent seat,
+ * a hostile shape, or a throwing accessor archives nothing — filtering fail
+ * open to the unfiltered list, never fail closed to an empty one.
+ */
+function archivedSetOf(workspaces: unknown): Set<string> {
+  try {
+    const value = asRecord(workspaces)?.archivedSessionIds
+    if (!Array.isArray(value)) return new Set()
+    return new Set(value.filter((id): id is string => typeof id === 'string'))
+  } catch {
+    return new Set()
+  }
+}
+
+/**
  * Join the raw session-list snapshot into render-ready rows, or null when
  * the snapshot is unusable (absent service, hostile root — the panel's
  * unavailable note, distinct from a real empty list). Blank rows (a
  * never-engaged session's placeholder) are not insight material and drop
- * out; every other row derives in isolation, so one throwing row costs
- * just itself.
+ * out; archived rows drop too (the raw list carries every session — the
+ * workspace browser hides its archive set, and the overview must not
+ * surface ghosts its sibling surface hides); every other row derives in
+ * isolation, so one throwing row costs just itself.
  */
-export function rowsOfSnapshot(snapshot: unknown): OverviewRow[] | null {
+export function rowsOfSnapshot(snapshot: unknown, workspaces?: unknown): OverviewRow[] | null {
   const state = asRecord(snapshot)
   if (state === null) return null
   if (!Array.isArray(state.ids)) return null
   const ids: string[] = state.ids.filter((id): id is string => typeof id === 'string')
+  const archived = archivedSetOf(workspaces)
   const byId = asRecord(state.byId) ?? {}
   const current = typeof state.current === 'string' ? state.current : undefined
   const rows: OverviewRow[] = []
   for (const id of ids) {
+    if (archived.has(id)) continue
     try {
       const row = asRecord(byId[id])
       if (row === null) continue
