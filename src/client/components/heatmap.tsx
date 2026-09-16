@@ -21,7 +21,7 @@ export interface HeatmapDay {
 export interface HeatmapProps {
   /** Merged ledger (day key → that day's figures). */
   days: Record<string, HeatmapDay>
-  /** Columns to draw (default 12 — a quarter). */
+  /** Columns to draw (default 8 — two months). */
   weeks?: number
   /** The pinned day key, when the list is filtered to a day. */
   selected?: string | null
@@ -79,7 +79,7 @@ function levelOf(tokens: number, max: number): number {
 export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement {
   const { t } = kit
   return function Heatmap(props: HeatmapProps): ReactElement {
-    const weeks = props.weeks ?? 12
+    const weeks = props.weeks ?? 8
     const columns = gridOf(props.today, weeks)
     if (columns === null) return <div className="lc-empty">{t('ov.heat.empty')}</div>
     // Join the ledger onto the grid and price the depth scale. The record is

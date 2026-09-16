@@ -9,7 +9,7 @@
  * Top to bottom: the range picker (7d / 30d / all) scopes the KPI band
  * (sessions, billed tokens, estimated cost, cache hit), the aggregate
  * composition donut and the session grid; the activity heatmap keeps its
- * own fixed 12-week window and PINs the grid to a picked day (the panel's
+ * own fixed 8-week window and PINs the grid to a picked day (the panel's
  * drill-down gesture). A session card click jumps to that session through
  * the harness's own `sessions.open` and closes the panel.
  */

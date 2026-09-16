@@ -35,28 +35,30 @@
   .lc-ov-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ---- the charts row: heatmap card beside the composition card, wrapping as a pair ---- */
+/* ---- the charts row: heatmap card beside the composition card, wrapping as a pair (2:3) ---- */
 .lc-ov-charts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .lc-ov-charts > .lc-card { margin-bottom: 0; min-width: 0; }
-.lc-ov-heat-card { flex: 3 1 400px; display: flex; flex-direction: column; }
-.lc-ov-comp-card { flex: 2 1 300px; }
+.lc-ov-heat-card { flex: 2 1 320px; display: flex; flex-direction: column; }
+.lc-ov-comp-card { flex: 3 1 420px; }
 .lc-ov-comp-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 
 /*
- * The activity heatmap: square cells that STRETCH to fill the card (the
- * columns share the row width and each cell keeps a 1:1 ratio), so the grid
- * reads as a full-width chart instead of a corner stamp; the block centers
- * vertically in the card's free space. Monday-first, four depth steps.
+ * The activity heatmap: fixed-size square cells (8 week columns ≈ a 200px
+ * block) centered in the card, so the card's height follows the 7 cell rows
+ * instead of the cells stretching to the card's width — the compact
+ * GitHub-widget read. Monday-first, four depth steps.
  */
-.lc-heat { display: flex; gap: 4px; flex: 1; align-items: center; }
-.lc-heat-wds { display: flex; flex-direction: column; gap: 3px; align-self: stretch; }
-.lc-heat-wd { flex: 1; width: 10px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--dsw-alias-label-secondary); text-align: center; }
-.lc-heat-cols { display: flex; gap: 3px; flex: 1; }
-.lc-heat-col { display: flex; flex-direction: column; gap: 3px; flex: 1; }
-.lc-heat-cell { width: 100%; aspect-ratio: 1; box-sizing: border-box; border: 0; border-radius: 20%; padding: 0; background: var(--dsw-alias-bg-layer-2); cursor: default; }
+.lc-heat { display: flex; gap: 4px; flex: 1; align-items: center; justify-content: center; }
+.lc-heat-wds { display: flex; flex-direction: column; gap: 3px; }
+.lc-heat-wd { flex: none; width: 10px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--dsw-alias-label-secondary); text-align: center; }
+.lc-heat-cols { display: flex; gap: 3px; }
+.lc-heat-col { display: flex; flex-direction: column; gap: 3px; }
+.lc-heat-cell { width: 20px; height: 20px; box-sizing: border-box; border: 0; border-radius: 20%; padding: 0; background: var(--dsw-alias-bg-layer-2); cursor: default; }
 button.lc-heat-cell { cursor: pointer; }
 button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-blue-500) 70%, transparent); }
 .lc-heat-future { background: transparent; }
+/* A day with no billed activity keeps a visible gray floor (layer-2 is the card's own white in the light theme). */
+.lc-heat-0 { background: color-mix(in srgb, var(--dsw-alias-label-secondary) 16%, transparent); }
 .lc-heat-1 { background: color-mix(in srgb, var(--color-blue-500) 28%, transparent); }
 .lc-heat-2 { background: color-mix(in srgb, var(--color-blue-500) 50%, transparent); }
 .lc-heat-3 { background: color-mix(in srgb, var(--color-blue-500) 72%, transparent); }
