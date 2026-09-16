@@ -1,18 +1,20 @@
 /**
- * The `contextActivity` warm-up: a one-pass background backfill that gives
- * every stored session its projection rows WITHOUT waiting for the user to
- * open it.
+ * The projection warm-up: a one-pass background backfill that gives every
+ * stored session its `contextActivity` + `contextTimeline` rows WITHOUT
+ * waiting for the user to open it.
  *
- * The overview's heatmap and session cards read the session list's
- * projection column, which serves durable cache rows only (zero-I/O). A
- * session folded before a projection unit existed — `contextActivity` on
- * upgrade, `contextTimeline` for a session that predates the plugin — has
- * no row until it next goes live, so the heatmap would stay empty and the
- * cards would show their no-data note indefinitely. The cache's cold-read
- * ladder (`sessionProjectionCache.coldSnapshot`) closes exactly that gap:
- * read the stored log once, seed each unit from its cached rows, fold the
- * remainder, and write the refreshed checkpoint back (the cache does the
- * write-back itself).
+ * The overview's heatmap, KPI band, and session cards read the session
+ * list's projection column, which serves durable cache rows only (zero-I/O).
+ * A session folded before a projection unit existed — `contextActivity` on
+ * upgrade, `contextTimeline` for a session that predates the plugin — or
+ * whose rows went version-stale (a `stateVersion` bump, e.g. the timeline's
+ * `lastUser` preview) has no usable row until it next goes live, so the
+ * heatmap would stay empty, the KPI band would undercount, and the cards
+ * would show their no-data note and no preview indefinitely. The cache's
+ * cold-read ladder (`sessionProjectionCache.coldSnapshot`) closes exactly
+ * that gap: read the stored log once, seed each unit from its cached rows,
+ * fold the remainder, and write the refreshed checkpoint back (the cache
+ * does the write-back itself).
  *
  * OPTIONAL BY CONTRACT: the sessionQuery / sessionProjectionCache /
  * sessionPersistence / sessions services compose on every standard
@@ -65,15 +67,20 @@ function headerOf(record: unknown): SessionHeader | null {
   return header as unknown as SessionHeader
 }
 
-/** Whether the cache already serves a `contextActivity` row for this header (nothing to backfill). */
-function servesActivity(cache: ProjectionCacheLike, header: SessionHeader): boolean {
+/** Whether the cache already serves BOTH projection rows for this header (nothing to backfill). */
+function servesRows(cache: ProjectionCacheLike, header: SessionHeader): boolean {
   try {
     // Unseeded sessions carry no inherited prefix (cut 0); a seeded (forked)
     // header's real cut only arrives with the log read below, so the probe
     // misses and the session takes the cold-read path — correct either way.
-    const block = asRecord(cache.cachedSnapshot(header, SessionLogOffset(0), ['contextActivity']))
+    // Both keys must be served: a version-stale row (the timeline's head
+    // gained `lastUser` at stateVersion 20) reads as absent here, so the
+    // session's stale rows get their one cold refold at startup.
+    const block = asRecord(cache.cachedSnapshot(header, SessionLogOffset(0), ['contextActivity', 'contextTimeline']))
     const values = asRecord(block?.values)
-    return values !== null && values.contextActivity !== undefined
+    return values !== null
+      && values.contextActivity !== undefined
+      && values.contextTimeline !== undefined
   } catch {
     return false
   }
@@ -153,7 +160,7 @@ export function watchActivityBackfill(ctx: Context): () => void {
         const header = headerOf(record)
         if (header === null || typeof header.cwd !== 'string') continue
         if (isLive(sessions, header.id)) continue
-        if (servesActivity(cache as unknown as ProjectionCacheLike, header)) continue
+        if (servesRows(cache as unknown as ProjectionCacheLike, header)) continue
         try {
           const log = await readColdLog(persistence as unknown as PersistenceLike, header.id, abort.signal)
           // The handle's header is authoritative (fixed at open); the listed
@@ -161,15 +168,15 @@ export function watchActivityBackfill(ctx: Context): () => void {
           ;(cache as unknown as ProjectionCacheLike).coldSnapshot(log.header, log.inheritedEventCount, log.events)
           folded++
         } catch (error: unknown) {
-          ctx.logger.warn(`dsh-context: contextActivity backfill skipped "${header.id}" (${String(error)})`)
+          ctx.logger.warn(`dsh-context: projection backfill skipped "${header.id}" (${String(error)})`)
         }
         // Pace the pass: hundreds of cold reads in one breath would starve the host.
         await new Promise(resolve => setTimeout(resolve, YIELD_MS))
       }
-      if (folded > 0) ctx.logger.info(`dsh-context: contextActivity backfilled for ${folded} session(s)`)
+      if (folded > 0) ctx.logger.info(`dsh-context: projection rows backfilled for ${folded} session(s)`)
     }
     void run().catch((error: unknown) => {
-      if (!abort.signal.aborted) ctx.logger.warn(`dsh-context: contextActivity backfill stopped early (${String(error)})`)
+      if (!abort.signal.aborted) ctx.logger.warn(`dsh-context: projection backfill stopped early (${String(error)})`)
     })
     return () => { abort.abort() }
   })

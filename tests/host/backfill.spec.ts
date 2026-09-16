@@ -1,6 +1,6 @@
-// The contextActivity warm-up (src/host/backfill.ts) over the REAL cordis
+// The projection warm-up (src/host/backfill.ts) over the REAL cordis
 // context: the deferred inject's service gating, the per-session skip
-// ladder (malformed, invisible, live, already-served), the cold-read →
+// ladder (malformed, invisible, live, already fully served), the cold-read →
 // coldSnapshot fold path, per-session failure isolation, and abort-on-
 // dispose.
 
@@ -35,7 +35,9 @@ function arm(ctx: Context, state: FakeState): void {
   })
   ctx.provide('sessionProjectionCache', {
     cachedSnapshot: (header: { id: string }) =>
-      state.served.has(header.id) ? { asOfSeq: 0, values: { contextActivity: { days: {} } } } : undefined,
+      state.served.has(header.id)
+        ? { asOfSeq: 0, values: { contextActivity: { days: {} }, contextTimeline: { ok: true } } }
+        : undefined,
     coldSnapshot: (header: { id: string }) => {
       state.coldSnapshots.push(header.id)
       return { asOfSeq: 0, values: {} }
@@ -120,7 +122,9 @@ describe('watchActivityBackfill', () => {
     })
     ctx.provide('sessionProjectionCache', {
       cachedSnapshot: (header: { id: string }) =>
-        state.served.has(header.id) ? { asOfSeq: 0, values: { contextActivity: { days: {} } } } : undefined,
+        state.served.has(header.id)
+          ? { asOfSeq: 0, values: { contextActivity: { days: {} }, contextTimeline: { ok: true } } }
+          : undefined,
       coldSnapshot: () => {
         state.coldSnapshots.push('x')
         return {}
@@ -177,6 +181,35 @@ describe('watchActivityBackfill', () => {
     dispose()
     assert.deepEqual(state.coldReads.sort(), ['a', 'c'])
     assert.deepEqual(state.coldSnapshots.sort(), ['a', 'c'])
+  })
+
+  test('a session serving only the activity row (timeline version-stale) gets a cold refold', async () => {
+    // The lastUser bump's whole point: a cached timeline row that predates
+    // the field fails the version gate and reads as absent — the session is
+    // NOT "already served" and its rows are rebuilt at startup.
+    const ctx = new Context()
+    const state = fakeState([{ header: { id: 'a', cwd: '/repo/a' } }])
+    ctx.provide('sessionQuery', { listSessions: async () => state.listed })
+    ctx.provide('sessionProjectionCache', {
+      cachedSnapshot: () => ({ asOfSeq: 0, values: { contextActivity: { days: {} } } }),
+      coldSnapshot: (header: { id: string }) => {
+        state.coldSnapshots.push(header.id)
+        return { asOfSeq: 0, values: {} }
+      },
+    })
+    ctx.provide('sessionPersistence', {
+      open: async (id: string) => ({
+        header: { id, version: 1, createdAt: 1, cwd: '/repo', isSeeded: false },
+        inheritedEventCount: 0,
+        read: async () => ({ events: [] }),
+        close: async () => {},
+      }),
+    })
+    ctx.provide('sessions', { get: () => undefined })
+    const dispose = watchActivityBackfill(ctx)
+    await until(() => (state.coldSnapshots.length === 1 ? true : undefined), 'the stale session folded')
+    dispose()
+    assert.deepEqual(state.coldSnapshots, ['a'])
   })
 
   test('a non-array listing ends the run without work', async () => {
