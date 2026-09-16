@@ -614,7 +614,7 @@ function applySurface(
 }
 
 /** The durable usage object, as far as the fold reads it — every bucket is re-proved by `tokenCountOf`, never trusted. */
-interface UsageLike {
+export interface UsageLike {
   inputTokens?: unknown
   cacheReadTokens?: unknown
   cacheWriteTokens?: unknown
@@ -639,8 +639,12 @@ interface BilledUsage {
  * schemas' `.int().nonnegative()` gates on EVERY later delivery, permanently
  * freezing the projection feed for the session (issue #44). NaN, infinities,
  * and non-numeric values read as absent.
+ *
+ * Exported for the activity unit (host/activity.ts): the daily ledger re-proves
+ * the same durable usage buckets with the same sanitizer, so one raw figure
+ * can never enter either fold's state.
  */
-function tokenCountOf(value: unknown): number | null {
+export function tokenCountOf(value: unknown): number | null {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? Math.max(0, Math.round(value)) : null
   }

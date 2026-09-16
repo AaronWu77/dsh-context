@@ -79,7 +79,7 @@ describe('dsh-context host plugin', () => {
     assert.deepEqual(inject, ['sessionProjections'])
   })
 
-  test('registers both units and serves the folded views over real appends', async () => {
+  test('registers all three units and serves the folded views over real appends', async () => {
     const { ctx } = await boot()
     const session = ctx.sessions.create()
     appendRealEnvelopes(session)
@@ -98,6 +98,13 @@ describe('dsh-context host plugin', () => {
     assert.equal(headers.headers.length, 1)
     assert.ok(!('system' in headers.headers[0]), 'system text stays in the log, not the projection')
     assert.ok((headers.headers[0].systemTokens ?? 0) > 0, 'the epoch carries its system token price')
+
+    const activity = snapshot.values.contextActivity
+    assert.ok(activity !== undefined, 'contextActivity served after real appends')
+    const entries = Object.values(activity.days)
+    assert.equal(entries.length, 1, 'the one settlement books its day')
+    assert.equal(entries[0].requests, 1)
+    assert.equal(entries[0].tokens, 15, 'the metered buckets sum into the day (10 input + 5 output)')
   })
 
   test('the change feed fires with the schema-validated view', async () => {
