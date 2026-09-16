@@ -6,35 +6,32 @@
  * projection values), so the panel draws every session's insight without
  * opening one log.
  *
- * Top to bottom: the range picker (7d / 30d / all) scopes the KPI band
- * (sessions, billed tokens, estimated cost, cache hit), the aggregate
- * composition donut and the session grid; the activity heatmap keeps its
- * own fixed 8-week window and PINs the grid to a picked day (the panel's
- * drill-down gesture). A session card click jumps to that session through
- * the harness's own `sessions.open` and closes the panel.
+ * Top to bottom: the range picker (7d / 30d / all) scopes the insight band —
+ * the KPI 2×2 block and the activity heatmap share one folding row — above
+ * the session grid; the activity heatmap keeps its own fixed 8-week window
+ * and PINs the grid to a picked day (the panel's drill-down gesture). A
+ * session card click jumps to that session through the harness's own
+ * `sessions.open` and closes the panel.
  */
 
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactElement } from 'react'
-import { CATS, partsOf } from '../categories'
 import { estimateSessionCost, formatCost, type CostCurrency, type ModelPrices } from '../cost'
-import { fmt, fmtShare } from '../format'
+import { fmt } from '../format'
 import { useModelPrices } from '../modelPrices'
 import {
-  aggregateDays, filterRows, groupCountsOf, inGroup, kpisOf, mergeComposition, openSession,
-  refreshSessions, rowsOfSnapshot, sessionGroupsOf, sessionsSnapshotOf, sortRows,
+  aggregateDays, filterRows, groupCountsOf, inGroup, kpisOf, openSession,
+  pageOf, refreshSessions, rowsOfSnapshot, sessionGroupsOf, sessionsSnapshotOf, sortRows,
   UNGROUPED_KEY, workspacesSnapshotOf,
   type OverviewRange, type OverviewRow, type OverviewSort,
 } from '../overview'
 import { overviewStore } from '../overviewStore'
 import type { ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
-import { makeDonut } from './donut'
 import { makeErrorBoundary } from './errorBoundary'
 import { useEscapeClose } from './escapeClose'
 import { makeHeatmap, todayKey } from './heatmap'
 import { ContextIcon } from '../icon'
 import { makeOverviewCard } from './overviewCard'
-import { makeSliceList, type SliceRow } from './sliceList'
 
 export interface OverviewPanelProps {
   /** The root standard kit's sessions seat (absent on a harness without it). */
@@ -48,8 +45,6 @@ const SORTS: readonly OverviewSort[] = ['recent', 'tokens', 'context']
 
 export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: OverviewPanelProps) => ReactElement | null {
   const { t } = kit
-  const Donut = makeDonut(kit)
-  const SliceList = makeSliceList(kit)
   const Heatmap = makeHeatmap(kit)
   const OverviewCard = makeOverviewCard(kit)
   const ErrorBoundary = makeErrorBoundary(t)
@@ -72,7 +67,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     const [query, setQuery] = useState('')
     const [group, setGroup] = useState<string | null>(null)
     const [sort, setSort] = useState<OverviewSort>('recent')
-    const [hoverCat, setHoverCat] = useState<string | null>(null)
+    const [page, setPage] = useState(0)
     const close = (): void => { overviewStore.set(false) }
     useEscapeClose(open, close)
 
@@ -84,6 +79,9 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     useEffect(() => {
       if (open) refreshSessions(ctx)
     }, [open])
+
+    // Any filter change re-anchors the pager at the first page.
+    useEffect(() => { setPage(0) }, [range, day, query, group, sort])
 
     if (!open) return null
 
@@ -106,17 +104,9 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
       group === null ? scoped : scoped.filter(row => inGroup(row, group, groups)),
       sort,
     )
+    const paged = pageOf(visible, page)
     const kpi = kpisOf(ranged, allRows.length, prices, currency)
     const days = aggregateDays(allRows)
-    const composition = mergeComposition(ranged)
-    const slices: SliceRow[] = composition === null ? [] : CATS.map(c => ({
-      key: c.key,
-      color: c.color,
-      label: kit.catLabel(c.key),
-      pct: fmtShare(composition[c.key], composition.total),
-      count: fmt(composition[c.key]),
-      ...(composition[c.key] <= 0 ? { dim: true } : {}),
-    }))
     const openOne = (id: string): void => {
       openSession(ctx, id)
       overviewStore.set(false)
@@ -145,55 +135,35 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
             <div className="lc-empty">{t('ov.unavailable')}</div>
           ) : (
             <>
-              <div className="lc-ov-kpis">
-                <div className="lc-stat lc-ov-kpi">
-                  <span className="lc-stat-label">{t('ov.kpi.sessions')}</span>
-                  <span className="lc-stat-value">{kpi.sessions}</span>
-                  <span className="lc-stat-sub">{t('ov.kpi.ofTotal', { n: kpi.listed })}</span>
+              <div className="lc-ov-mid">
+                <div className="lc-ov-kpis">
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('ov.kpi.sessions')}</span>
+                    <span className="lc-stat-value">{kpi.sessions}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.ofTotal', { n: kpi.listed })}</span>
+                  </div>
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('ov.kpi.tokens')}</span>
+                    <span className="lc-stat-value">{fmt(kpi.tokens)}</span>
+                    <span className="lc-stat-sub">{t('stats.turns')} {fmt(kpi.turns)}</span>
+                  </div>
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('stats.cost')}</span>
+                    <span className="lc-stat-value">{kpi.cost === null ? '—' : formatCost(kpi.cost, currency)}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.costSub')}</span>
+                  </div>
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('stats.cacheHit')}</span>
+                    <span className="lc-stat-value">{kpi.cacheHit === null ? '—' : kpi.cacheHit + '%'}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.cacheSub')}</span>
+                  </div>
                 </div>
-                <div className="lc-stat lc-ov-kpi">
-                  <span className="lc-stat-label">{t('ov.kpi.tokens')}</span>
-                  <span className="lc-stat-value">{fmt(kpi.tokens)}</span>
-                  <span className="lc-stat-sub">{t('stats.turns')} {fmt(kpi.turns)}</span>
-                </div>
-                <div className="lc-stat lc-ov-kpi">
-                  <span className="lc-stat-label">{t('stats.cost')}</span>
-                  <span className="lc-stat-value">{kpi.cost === null ? '—' : formatCost(kpi.cost, currency)}</span>
-                  <span className="lc-stat-sub">{t('ov.kpi.costSub')}</span>
-                </div>
-                <div className="lc-stat lc-ov-kpi">
-                  <span className="lc-stat-label">{t('stats.cacheHit')}</span>
-                  <span className="lc-stat-value">{kpi.cacheHit === null ? '—' : kpi.cacheHit + '%'}</span>
-                  <span className="lc-stat-sub">{t('ov.kpi.cacheSub')}</span>
-                </div>
-              </div>
-
-              <div className="lc-ov-charts">
                 <div className="lc-card lc-ov-heat-card">
                   <div className="lc-card-title">
                     <span className="lc-card-title-text">{t('ov.heat.title')}</span>
                     <span className="lc-card-sub">{t('ov.heat.sub')}</span>
                   </div>
                   <Heatmap days={days} selected={day} onSelect={setDay} today={todayKey()} />
-                </div>
-                <div className="lc-card lc-ov-comp-card">
-                  <div className="lc-card-title">
-                    <span className="lc-card-title-text">{t('ov.comp.title')}</span>
-                    <span className="lc-card-sub">{t('ov.comp.unit')}</span>
-                  </div>
-                  {composition === null ? (
-                    <div className="lc-empty">{t('ov.comp.empty')}</div>
-                  ) : (
-                    <div className="lc-ov-comp-row">
-                      <Donut
-                        segments={partsOf(composition)}
-                        centerTop={fmt(composition.total)}
-                        hoverKey={hoverCat}
-                        onHoverKey={setHoverCat}
-                      />
-                      <SliceList rows={slices} hoverKey={hoverCat} onHoverKey={setHoverCat} />
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -246,18 +216,39 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
               {visible.length === 0 ? (
                 <div className="lc-empty">{t(allRows.length === 0 ? 'ov.list.empty' : 'ov.list.noMatch')}</div>
               ) : (
-                <div className="lc-ov-grid">
-                  {visible.map(row => (
-                    <OverviewCard
-                      key={row.id}
-                      row={row}
-                      {...(groups?.[row.id] !== undefined ? { group: groups[row.id] } : {})}
-                      costLabel={cardCostOf(row, prices, currency)}
-                      now={now}
-                      onOpen={openOne}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="lc-ov-grid">
+                    {paged.items.map(row => (
+                      <OverviewCard
+                        key={row.id}
+                        row={row}
+                        {...(groups?.[row.id] !== undefined ? { group: groups[row.id] } : {})}
+                        costLabel={cardCostOf(row, prices, currency)}
+                        now={now}
+                        onOpen={openOne}
+                      />
+                    ))}
+                  </div>
+                  {paged.count > 1 && (
+                    <div className="lc-ov-pager" role="navigation" aria-label={t('ov.list.pager')}>
+                      <button
+                        type="button"
+                        className="lc-ov-pager-btn"
+                        disabled={paged.index === 0}
+                        aria-label={t('ov.list.prev')}
+                        onClick={() => { setPage(paged.index - 1) }}
+                      >‹</button>
+                      <span className="lc-ov-pager-n">{t('ov.list.page', { n: paged.index + 1, total: paged.count })}</span>
+                      <button
+                        type="button"
+                        className="lc-ov-pager-btn"
+                        disabled={paged.index === paged.count - 1}
+                        aria-label={t('ov.list.next')}
+                        onClick={() => { setPage(paged.index + 1) }}
+                      >›</button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

@@ -273,6 +273,22 @@ export function turnsOf(timeline: ContextTimeline | null): number {
 }
 
 /**
+ * The session's first active day (the ledger's earliest key) — the card's
+ * creation-date line. The harness's client-facing list rows carry no
+ * per-session creation time, so the first billed day stands in; undefined
+ * when the ledger is absent (an older host, or no model requests yet).
+ */
+export function createdDayOf(activity: ContextActivity | null): string | undefined {
+  const days = activity?.days
+  if (days === undefined) return undefined
+  let first: string | undefined
+  for (const key of Object.keys(days)) {
+    if (first === undefined || key < first) first = key
+  }
+  return first
+}
+
+/**
  * The panel's row pipeline: range (by last-activity), then the heatmap's
  * picked day (sessions contributing to that day's merged ledger), then the
  * search box (title or directory substring). Each stage keeps the rows it
@@ -307,6 +323,20 @@ export function sortRows(rows: readonly OverviewRow[], sort: OverviewSort): Over
   else if (sort === 'context') copy.sort((a, b) => (b.timeline?.current.total ?? -1) - (a.timeline?.current.total ?? -1))
   else copy.sort((a, b) => b.updatedAt - a.updatedAt)
   return copy
+}
+
+/** The session grid renders this many cards per page. */
+export const OVERVIEW_PAGE_SIZE = 12
+
+/**
+ * The paged window over the sorted rows: the requested page clamped into
+ * the live range, so a list that shrank between renders (a refresh, a
+ * narrowed filter) keeps the view valid instead of showing a blank page.
+ */
+export function pageOf<T>(rows: readonly T[], page: number): { items: T[]; index: number; count: number } {
+  const count = Math.max(1, Math.ceil(rows.length / OVERVIEW_PAGE_SIZE))
+  const index = Math.min(Math.max(0, page), count - 1)
+  return { items: rows.slice(index * OVERVIEW_PAGE_SIZE, (index + 1) * OVERVIEW_PAGE_SIZE), index, count }
 }
 
 // ---- aggregations ----------------------------------------------------------
@@ -407,30 +437,6 @@ export function aggregateDays(rows: readonly OverviewRow[]): Record<string, { to
     }
   }
   return days
-}
-
-/**
- * Sum the current-context composition across rows — the aggregate donut's
- * parts (every bucket of `current`, over the rows that have a timeline).
- * Null when no row carries one (the card renders its empty note).
- */
-export function mergeComposition(rows: readonly OverviewRow[]): ContextTimeline['current'] | null {
-  const sum = { system: 0, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, tool: 0, total: 0 }
-  let any = false
-  for (const row of rows) {
-    if (row.timeline === null) continue
-    const current = row.timeline.current
-    sum.system += current.system
-    sum.tools += current.tools
-    sum.user += current.user
-    sum.inject += current.inject
-    sum.skill += current.skill
-    sum.assistant += current.assistant
-    sum.tool += current.tool
-    sum.total += current.total
-    any = true
-  }
-  return any ? sum : null
 }
 
 // ---- presentation helpers --------------------------------------------------

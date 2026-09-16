@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { makeOverviewCard } from '../../../src/client/components/overviewCard'
 import type { OverviewRow } from '../../../src/client/overview'
-import type { ContextTimeline } from '../../../src/shared/types'
+import type { ContextActivity, ContextTimeline } from '../../../src/shared/types'
 import { click, makeKit, mount, query, queryAll, text } from '../helpers/kit'
 
 const kit = makeKit()
@@ -45,11 +45,11 @@ describe('OverviewCard', () => {
     // The mini donut: center carries the current total and the window share.
     assert.equal(query(m.container, '.lc-donut-center b').textContent, '500')
     assert.equal(query(m.container, '.lc-donut-center span').textContent, '50.0%')
-    // The three mini stats: total billed, turns, cost.
+    // The three mini stats: turns+steps lead, then total billed, then cost.
     const labels = queryAll(m.container, '.lc-ov-mini-label').map(el => el.textContent)
     const values = queryAll(m.container, '.lc-ov-mini-value').map(el => el.textContent)
-    assert.deepEqual(labels, ['Total', 'Turns', 'Cost'])
-    assert.deepEqual(values, ['1.8k', '9', '$0.02'])
+    assert.deepEqual(labels, ['Turns', 'Total', 'Cost'])
+    assert.deepEqual(values, ['9 turns · 12 steps', '1.8k', '$0.02'])
     await m.unmount()
   })
 
@@ -59,8 +59,19 @@ describe('OverviewCard', () => {
     assert.equal(query(m.container, '.lc-donut-center b').textContent, '500')
     assert.equal(queryAll(m.container, '.lc-donut-center span').length, 0, 'no occupancy without the window')
     const values = queryAll(m.container, '.lc-ov-mini-value').map(el => el.textContent)
-    assert.deepEqual(values, ['—', '1', '—'], 'no cost buckets and the records-derived turns')
+    assert.deepEqual(values, ['1', '—', '—'], 'a counts-less head names the bare turns; no cost buckets')
     await m.unmount()
+  })
+
+  test('the created line shows the first active day; absent without a ledger', async () => {
+    const ledger = { days: { '2026-09-16': { tokens: 5, requests: 1 }, '2026-09-10': { tokens: 1, requests: 1 } } } as ContextActivity
+    const withLedger = await mount(h(Card, { row: rowOf({ activity: ledger }), costLabel: '—', now: NOW, onOpen: () => {} }))
+    assert.equal(query(withLedger.container, '.lc-ov-session-time').textContent, '3h ago')
+    assert.equal(query(withLedger.container, '.lc-ov-session-created').textContent, '2026-09-10', 'the earliest day, not the latest')
+    await withLedger.unmount()
+    const noLedger = await mount(h(Card, { row: rowOf(), costLabel: '—', now: NOW, onOpen: () => {} }))
+    assert.equal(queryAll(noLedger.container, '.lc-ov-session-created').length, 0)
+    await noLedger.unmount()
   })
 
   test('a session with no timeline degrades to the metadata-only note', async () => {
@@ -142,7 +153,9 @@ describe('OverviewCard', () => {
     const ZhCard = makeOverviewCard(makeKit('zh'))
     const m = await mount(h(ZhCard, { row: rowOf({ timeline: TIMELINE }), costLabel: '¥0.13', now: NOW, onOpen: () => {} }))
     const labels = queryAll(m.container, '.lc-ov-mini-label').map(el => el.textContent)
-    assert.deepEqual(labels, ['总用量', '轮次', '预估费用'])
+    assert.deepEqual(labels, ['轮次', '总用量', '费用'])
+    const values = queryAll(m.container, '.lc-ov-mini-value').map(el => el.textContent)
+    assert.equal(values[0], '9 轮 12 步')
     assert.equal(query(m.container, '.lc-ov-session-time').textContent, '3 小时前')
     await m.unmount()
   })

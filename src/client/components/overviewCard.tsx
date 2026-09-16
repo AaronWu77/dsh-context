@@ -1,15 +1,15 @@
 /**
- * One session card in the Context Dashboard's grid: the row's title, last-
- * activity time and directory over a mini composition donut (the same
- * seven-category ring the stats board draws, at card scale) and the three
- * figures a user scans for — billed tokens, turns, estimated cost. A row
- * whose host folded nothing yet degrades to a metadata-only card (never an
- * error). The whole card is one button: clicking opens the session (the
- * panel's `onOpen`).
+ * One session card in the Context Dashboard's grid: the row's title (wrap-
+ * clamped), last-activity and first-active times, and the directory over a
+ * mini composition donut (the same seven-category ring the stats board
+ * draws, at card scale) and the three figures a user scans for — turns and
+ * steps, billed tokens, cost. A row whose host folded nothing yet degrades
+ * to a metadata-only card (never an error). The whole card is one button:
+ * clicking opens the session (the panel's `onOpen`).
  */
 
 import type { ReactElement } from 'react'
-import { billedOf, projectOf, relativeTime, turnsOf, type OverviewRow } from '../overview'
+import { billedOf, createdDayOf, projectOf, relativeTime, turnsOf, type OverviewRow } from '../overview'
 import { partsOf } from '../categories'
 import { fmt, fmtShare } from '../format'
 import type { ViewKit } from '../viewkit'
@@ -36,12 +36,19 @@ export function makeOverviewCard(kit: ViewKit): (props: OverviewCardProps) => Re
     const occupancy = timeline !== null && typeof timeline.contextWindow === 'number' && timeline.contextWindow > 0
       ? fmtShare(timeline.current.total, timeline.contextWindow)
       : null
+    // The lead figure: turns and steps when the fold reported counts, the
+    // bare turns estimate otherwise (a counts-less head falls back to the
+    // request tally inside turnsOf).
+    const turns = turnsOf(timeline)
+    const steps = timeline?.counts?.steps
+    const turnsLabel = steps === undefined ? String(turns) : t('ov.card.turns', { n: turns, s: steps })
     // The breadcrumb: group (workspace title) / project (cwd basename); a
     // session with neither drops the row, and the full path stays on the tip.
     // A workspace whose title IS the project (the common single-repo case)
     // shows the name ONCE — never "dsh-context / dsh-context".
     const project = projectOf(row.cwd)
     const group = props.group !== undefined && props.group !== project ? props.group : undefined
+    const created = createdDayOf(row.activity)
     return (
       <button
         type="button"
@@ -52,7 +59,10 @@ export function makeOverviewCard(kit: ViewKit): (props: OverviewCardProps) => Re
           {row.running && <span className="lc-ov-running" title={t('ov.running')} />}
           <span className="lc-ov-session-title" title={row.title}>{row.title}</span>
           {row.current && <span className="lc-ov-current">{t('ov.current')}</span>}
-          <span className="lc-ov-session-time">{relativeTime(t, row.updatedAt, props.now)}</span>
+          <span className="lc-ov-session-times">
+            <span className="lc-ov-session-time">{relativeTime(t, row.updatedAt, props.now)}</span>
+            {created !== undefined && <span className="lc-ov-session-created">{created}</span>}
+          </span>
         </span>
         {(group !== undefined || project !== undefined) && (
           <span className="lc-ov-session-crumb" title={row.cwd}>
@@ -73,12 +83,12 @@ export function makeOverviewCard(kit: ViewKit): (props: OverviewCardProps) => Re
             />
             <span className="lc-ov-mini-stats">
               <span className="lc-ov-mini-stat">
-                <span className="lc-ov-mini-label">{t('tokens.total')}</span>
-                <span className="lc-ov-mini-value">{billed === null ? '—' : fmt(billed)}</span>
+                <span className="lc-ov-mini-label">{t('stats.turns')}</span>
+                <span className="lc-ov-mini-value">{turnsLabel}</span>
               </span>
               <span className="lc-ov-mini-stat">
-                <span className="lc-ov-mini-label">{t('stats.turns')}</span>
-                <span className="lc-ov-mini-value">{turnsOf(timeline)}</span>
+                <span className="lc-ov-mini-label">{t('tokens.total')}</span>
+                <span className="lc-ov-mini-value">{billed === null ? '—' : fmt(billed)}</span>
               </span>
               <span className="lc-ov-mini-stat">
                 <span className="lc-ov-mini-label">{t('stats.cost')}</span>

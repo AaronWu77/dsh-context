@@ -1,6 +1,6 @@
 // The Context Dashboard panel (src/client/components/overviewPanel.tsx) —
 // full renders through the standard-kit seams: KPI band, heatmap day-pin,
-// composition donut, filters/sorts, session open + close paths, and the
+// filters/sorts, pagination, session open + close paths, and the
 // degraded states.
 
 import { act, createElement as h } from 'react'
@@ -119,7 +119,7 @@ afterEach(async () => {
 })
 
 describe('OverviewPanel', () => {
-  test('renders the KPI band, heatmap, composition, and session cards; refreshes the list on open', async () => {
+  test('renders the KPI band, heatmap, and session cards; refreshes the list on open', async () => {
     let pulls = 0
     const ctx = makeCtx({ refresh: () => { pulls++; return Promise.resolve() } })
     const { m } = await openPanel(ctx)
@@ -133,8 +133,6 @@ describe('OverviewPanel', () => {
     assert.equal(values[1], '1.8k')
     assert.ok(values[2].startsWith('$'), 'priced from the book')
     assert.equal(values[3], '33.33%')
-    // The composition donut aggregates the ranged sessions.
-    assert.ok(query(m.container, '.lc-ov-comp-row .lc-donut'))
     // Heatmap drew cells for the two ledger days.
     assert.ok(queryAll(m.container, 'button.lc-heat-cell').length >= 2)
     // Cards: a (current, running, grouped), b, and c is outside the 30d range.
@@ -302,7 +300,7 @@ describe('OverviewPanel', () => {
     await third.m.unmount()
   })
 
-  test('degraded states: unavailable list, empty list, no composition, no activity', async () => {
+  test('degraded states: unavailable list, empty list, no activity', async () => {
     const ctx = makeCtx()
     // No sessions seat at all → the unavailable note.
     const bare = await openPanel(ctx, { useSessions: undefined, useWorkspaces: undefined })
@@ -315,11 +313,10 @@ describe('OverviewPanel', () => {
       useWorkspaces: useHookOf({ items: [] }),
     })
     assert.ok(text(empty.m.container).includes('No sessions yet'))
-    assert.ok(text(empty.m.container).includes('No context data in this range yet'))
     assert.ok(text(empty.m.container).includes('No activity yet'))
     await empty.m.unmount()
 
-    // Sessions without any timeline → composition empty note but cards render metadata-only.
+    // Sessions without any timeline → cards render metadata-only.
     const noTimeline = await openPanel(ctx, {
       useSessions: useHookOf({
         ids: ['x'],
@@ -327,7 +324,6 @@ describe('OverviewPanel', () => {
         phase: 'ready',
       }),
     })
-    assert.ok(text(noTimeline.m.container).includes('No context data in this range yet'))
     assert.ok(text(noTimeline.m.container).includes('No context data yet'))
     const kpiValues = queryAll(noTimeline.m.container, '.lc-stat-value').map(el => el.textContent)
     assert.equal(kpiValues[1], '0')
@@ -362,7 +358,7 @@ describe('OverviewPanel', () => {
     await m.unmount()
   })
 
-  test('a sparse composition dims the zero slices; an unpriceable model dashes the card cost', async () => {
+  test('an unpriceable model dashes the card cost', async () => {
     const ctx = makeCtx()
     const sparse = timeline({
       current: { system: 10, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, tool: 0, total: 10 },
@@ -378,8 +374,6 @@ describe('OverviewPanel', () => {
       }),
     })
     await flush() // the price book lands
-    // Zero buckets dim their legend rows (the ring carries the share).
-    assert.ok(queryAll(m.container, '.lc-sl-row-dim').length > 0)
     // The card's cost: buckets exist but the book prices no such model → the dash.
     const values = queryAll(m.container, '.lc-ov-mini-value').map(el => el.textContent)
     assert.equal(values[2], '—')
@@ -407,6 +401,47 @@ describe('OverviewPanel', () => {
     await flush() // the price book lands
     const values = queryAll(m.container, '.lc-stat-value').map(el => el.textContent)
     assert.ok(values[2].startsWith('$'), 'USD when the locale face cannot report an active locale')
+    await m.unmount()
+  })
+
+  test('the grid pages at 12 cards; the pager steps and a filter change re-anchors it', async () => {
+    const ctx = makeCtx()
+    const ids = Array.from({ length: 30 }, (_, i) => `s${i}`)
+    const byId: Record<string, Record<string, unknown>> = {}
+    ids.forEach((id, i) => { byId[id] = { displayTitle: `session ${i}`, updatedAt: NOW - i * 60_000 } })
+    const { m } = await openPanel(ctx, {
+      useSessions: useHookOf({ ids, byId, current: 's0', phase: 'ready' }),
+      useWorkspaces: useHookOf({ items: [] }),
+    })
+    assert.equal(queryAll(m.container, '.lc-ov-grid > .lc-ov-session').length, 12, 'the first page caps at 12 cards')
+    assert.ok(text(m.container).includes('Page 1 of 3'))
+    const btns = () => queryAll<HTMLButtonElement>(m.container, '.lc-ov-pager-btn')
+    assert.ok(btns()[0].disabled, 'prev sits out on the first page')
+    await click(btns()[1])
+    assert.equal(queryAll(m.container, '.lc-ov-grid > .lc-ov-session').length, 12, 'the middle page is full')
+    await click(btns()[1])
+    assert.equal(queryAll(m.container, '.lc-ov-grid > .lc-ov-session').length, 6, 'the tail page renders the rest')
+    assert.ok(text(m.container).includes('Page 3 of 3'))
+    assert.ok(btns()[1].disabled, 'next sits out on the last page')
+    await click(btns()[0])
+    assert.ok(text(m.container).includes('Page 2 of 3'), 'prev steps back')
+    // Typing while on the last page: the reset lands on the first page of the narrowed set.
+    await actType(query<HTMLInputElement>(m.container, 'input.lc-ov-search'), 'session 2')
+    assert.equal(queryAll(m.container, '.lc-ov-grid > .lc-ov-session').length, 11, "'session 2' matches 2 and 20–29")
+    assert.ok(!text(m.container).includes('Page 2 of 3'), 'the pager drops once one page remains')
+    await actType(query<HTMLInputElement>(m.container, 'input.lc-ov-search'), '')
+    assert.ok(text(m.container).includes('Page 1 of 3'), 'clearing the query lands on the first page, not the stale one')
+    await m.unmount()
+  })
+
+  test('typing keeps the search input focused (the escape hook never re-fires its focus restore)', async () => {
+    const ctx = makeCtx()
+    const { m } = await openPanel(ctx)
+    const input = query<HTMLInputElement>(m.container, 'input.lc-ov-search')
+    input.focus()
+    await actType(input, 'beta')
+    await actType(input, 'bet')
+    assert.equal(document.activeElement, input, 'every re-render leaves the focused input alone')
     await m.unmount()
   })
 })

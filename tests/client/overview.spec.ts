@@ -7,12 +7,13 @@ import { describe, test } from 'vitest'
 import {
   aggregateDays,
   billedOf,
+  createdDayOf,
   filterRows,
   groupCountsOf,
   inGroup,
   kpisOf,
-  mergeComposition,
   openSession,
+  pageOf,
   projectOf,
   rangeStartOf,
   refreshSessions,
@@ -29,7 +30,7 @@ import {
   type OverviewRow,
 } from '../../src/client/overview'
 import type { ClientCtx } from '../../src/client/services'
-import type { ContextTimeline, SessionCostUsage } from '../../src/shared/types'
+import type { ContextActivity, ContextTimeline, SessionCostUsage } from '../../src/shared/types'
 
 /** The minimal wire-valid timeline head, overridable per case. */
 function timelineOf(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -262,6 +263,46 @@ describe('sortRows', () => {
   })
 })
 
+describe('pageOf', () => {
+  const rows = Array.from({ length: 50 }, (_, i) => `s${i}`)
+
+  test('a short list renders as one page holding everything', () => {
+    assert.deepEqual(pageOf(['a', 'b'], 0), { items: ['a', 'b'], index: 0, count: 1 })
+    assert.deepEqual(pageOf([], 0), { items: [], index: 0, count: 1 }, 'an empty list still renders one page')
+  })
+
+  test('pages slice the rows at the fixed size', () => {
+    const first = pageOf(rows, 0)
+    assert.equal(first.count, 5)
+    assert.equal(first.items.length, 12)
+    assert.deepEqual(pageOf(rows, 4), { items: rows.slice(48), index: 4, count: 5 }, 'the tail page holds the rest')
+  })
+
+  test('an out-of-range request clamps into the live range', () => {
+    assert.equal(pageOf(rows, -1).index, 0, 'a negative request lands on the first page')
+    assert.equal(pageOf(rows, 9).index, 4, 'a page that a shrink left out of range lands on the last')
+  })
+})
+
+describe('createdDayOf', () => {
+  const activity = { days: { '2026-09-16': { tokens: 5, requests: 1 }, '2026-09-10': { tokens: 1, requests: 1 } } }
+
+  test('the earliest ledger day stands in for the creation date', () => {
+    assert.equal(createdDayOf(activity as ContextActivity), '2026-09-10')
+    assert.equal(
+      createdDayOf({ days: { '2026-09-10': { tokens: 1, requests: 1 }, '2026-09-16': { tokens: 5, requests: 1 } } } as ContextActivity),
+      '2026-09-10',
+      'a later day never displaces the earliest',
+    )
+  })
+
+  test('no ledger, no days record, or an empty one names no creation date', () => {
+    assert.equal(createdDayOf(null), undefined)
+    assert.equal(createdDayOf({} as ContextActivity), undefined)
+    assert.equal(createdDayOf({ days: {} } as ContextActivity), undefined)
+  })
+})
+
 describe('usageTotalsOf', () => {
   test('absent or empty usage reads null (the caller keeps its dash)', () => {
     assert.equal(usageTotalsOf(null), null)
@@ -317,18 +358,6 @@ describe('aggregateDays', () => {
       '2026-09-16': { tokens: 12, requests: 4 },
       '2026-09-15': { tokens: 2, requests: 2 },
     })
-  })
-})
-
-describe('mergeComposition', () => {
-  test('sums the current buckets across rows; null when no row carries a timeline', () => {
-    assert.equal(mergeComposition([rowOf()]), null)
-    const rows = [
-      rowOf({ timeline: { current: { system: 1, tools: 2, user: 3, inject: 4, skill: 5, assistant: 6, tool: 7, total: 28 } } as unknown as ContextTimeline }),
-      rowOf({ timeline: { current: { system: 10, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, tool: 0, total: 10 } } as unknown as ContextTimeline }),
-      rowOf(),
-    ]
-    assert.deepEqual(mergeComposition(rows), { system: 11, tools: 2, user: 3, inject: 4, skill: 5, assistant: 6, tool: 7, total: 38 })
   })
 })
 
