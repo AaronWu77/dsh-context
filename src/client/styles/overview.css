@@ -35,12 +35,16 @@
   .lc-ov-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ---- the charts row: heatmap card beside the composition card, wrapping as a pair (2:3) ---- */
+/* ---- the charts row: the heatmap card hugs its fixed grid; the composition card takes the rest ---- */
 .lc-ov-charts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .lc-ov-charts > .lc-card { margin-bottom: 0; min-width: 0; }
-.lc-ov-heat-card { flex: 2 1 320px; display: flex; flex-direction: column; }
-.lc-ov-comp-card { flex: 3 1 420px; }
+.lc-ov-heat-card { flex: 0 1 252px; display: flex; flex-direction: column; }
+.lc-ov-comp-card { flex: 1 1 420px; }
 .lc-ov-comp-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+/* Wrapped below the composition card (the row folds at ≈682px), the heat card stretches again — the grid just centers wider. */
+@container lc-ov (max-width: 680px) {
+  .lc-ov-heat-card { flex: 1 1 252px; }
+}
 
 /*
  * The activity heatmap: fixed-size square cells (8 week columns ≈ a 200px
