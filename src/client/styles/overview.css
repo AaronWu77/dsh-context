@@ -107,11 +107,11 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 .lc-ov-crumb-project { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--ds-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 10px; line-height: 1.6; color: var(--dsw-alias-label-primary); background: color-mix(in srgb, var(--dsw-alias-label-secondary) 16%, transparent); border-radius: 999px; padding: 0 8px; }
 .lc-ov-session-body { display: flex; gap: 14px; align-items: center; min-width: 0; }
 .lc-ov-mini-stats { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-/* Definition-list rows: the label holds a fixed column and the value follows
-   right after, so the figures cluster beside the donut instead of stretching
-   label and value to opposite card edges (the wide-card scatter). */
-.lc-ov-mini-stat { display: flex; align-items: baseline; gap: 10px; font-size: 11px; }
-.lc-ov-mini-label { flex: none; min-width: 4em; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+/* Definition-list rows: label and value pull to opposite card edges, so the
+   figures read as a right-hand column mirroring the header's right-aligned
+   times instead of clustering beside the donut. */
+.lc-ov-mini-stat { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 11px; }
+.lc-ov-mini-label { flex: none; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .lc-ov-mini-value { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lc-ov-session-empty { color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.5; padding: 6px 0; }
 
