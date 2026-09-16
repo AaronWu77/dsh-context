@@ -324,10 +324,22 @@ describe('usageTotalsOf', () => {
 describe('kpisOf', () => {
   const prices = { deepseek: { 'deepseek-v4': { hit: 0.1, miss: 1, write: 1, out: 2 } } }
 
-  test('aggregates sessions, tokens, turns, cost, and cache hit across the range', () => {
+  test('aggregates sessions, tokens, turns, cost, cache hit, tools, and time across the range', () => {
     const rows = [
-      rowOf({ timeline: { cost: COST, counts: { turns: 3 }, requests: [] } as unknown as ContextTimeline }),
-      rowOf({ timeline: { requests: [{}, {}] } as unknown as ContextTimeline }),
+      rowOf({
+        timeline: {
+          cost: COST,
+          counts: { turns: 3 },
+          requests: [],
+          timing: { wallMs: 90_000, ttftMs: 1_000, genMs: 30_000, calls: 4, toolsMs: 20_000, toolCalls: 7 },
+        } as unknown as ContextTimeline,
+      }),
+      rowOf({
+        timeline: {
+          requests: [{}, {}],
+          timing: { wallMs: 30_000, ttftMs: 0, genMs: 0, calls: 2, toolsMs: 0, toolCalls: 0 },
+        } as unknown as ContextTimeline,
+      }),
     ]
     const kpi = kpisOf(rows, 5, prices, 'usd')
     assert.equal(kpi.sessions, 2)
@@ -336,6 +348,10 @@ describe('kpisOf', () => {
     assert.equal(kpi.turns, 5)
     assert.ok(kpi.cost !== null && Math.abs(kpi.cost - 195e-6) < 1e-12, '50×0.1 + 100×1 + 10×1 + 40×2 per 1M')
     assert.equal(kpi.cacheHit, '31.25', '50 reads of 160 billed input, truncated')
+    assert.equal(kpi.toolCalls, 7, 'tool calls sum across rows')
+    assert.equal(kpi.toolsMs, 20_000)
+    assert.equal(kpi.calls, 6)
+    assert.equal(kpi.wallMs, 120_000)
   })
 
   test('an unbilled set zeroes and dashes', () => {
@@ -344,6 +360,10 @@ describe('kpisOf', () => {
     assert.equal(kpi.turns, 0)
     assert.equal(kpi.cost, null)
     assert.equal(kpi.cacheHit, null)
+    assert.equal(kpi.toolCalls, 0, 'no timing folds to zeroed tools and time')
+    assert.equal(kpi.toolsMs, 0)
+    assert.equal(kpi.calls, 0)
+    assert.equal(kpi.wallMs, 0)
   })
 })
 

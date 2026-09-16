@@ -6,7 +6,7 @@
  * projection values), so the panel draws every session's insight without
  * opening one log.
  *
- * The body is a 3:7 column pair: the insight column (the KPI 2×2 block over
+ * The body is a 3:7 column pair: the insight column (the KPI 2×3 block over
  * the activity heatmap) beside the session column (search, group chips, and
  * the card grid); the heatmap keeps its own fixed 8-week window and PINs the
  * list to a picked day (the panel's drill-down gesture). A session card
@@ -44,7 +44,7 @@ const RANGES: readonly OverviewRange[] = ['7d', '30d', 'all']
 const SORTS: readonly OverviewSort[] = ['recent', 'tokens', 'context']
 
 export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: OverviewPanelProps) => ReactElement | null {
-  const { t } = kit
+  const { t, fmtDuration } = kit
   const Heatmap = makeHeatmap(kit)
   const OverviewCard = makeOverviewCard(kit)
   const ErrorBoundary = makeErrorBoundary(t)
@@ -156,6 +156,16 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                     <span className="lc-stat-label">{t('stats.cacheHit')}</span>
                     <span className="lc-stat-value">{kpi.cacheHit === null ? '—' : kpi.cacheHit + '%'}</span>
                     <span className="lc-stat-sub">{t('ov.kpi.cacheSub')}</span>
+                  </div>
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('stats.toolCalls')}</span>
+                    <span className="lc-stat-value">{fmt(kpi.toolCalls)}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.toolSub', { dur: fmtDuration(kpi.toolsMs) })}</span>
+                  </div>
+                  <div className="lc-stat lc-ov-kpi">
+                    <span className="lc-stat-label">{t('timing.total')}</span>
+                    <span className="lc-stat-value">{fmtDuration(kpi.wallMs)}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.wallSub', { n: fmt(kpi.calls) })}</span>
                   </div>
                 </div>
                 <div className="lc-card lc-ov-heat-card">

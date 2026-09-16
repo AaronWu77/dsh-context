@@ -394,6 +394,14 @@ export interface OverviewKpis {
   cost: number | null
   /** Cache-hit share of billed input, truncated (null: nothing billed). */
   cacheHit: string | null
+  /** Their completed tool calls. */
+  toolCalls: number
+  /** Their summed tool-run time (the tool-calls cell's sub-line). */
+  toolsMs: number
+  /** Their completed model calls. */
+  calls: number
+  /** Their summed wall time (the sessions' active time). */
+  wallMs: number
 }
 
 export function kpisOf(
@@ -405,7 +413,18 @@ export function kpisOf(
   const usage = mergeCostUsage(...rows.map(row => row.timeline?.cost))
   const totals = usageTotalsOf(usage)
   let turns = 0
-  for (const row of rows) turns += turnsOf(row.timeline)
+  let toolCalls = 0
+  let toolsMs = 0
+  let calls = 0
+  let wallMs = 0
+  for (const row of rows) {
+    turns += turnsOf(row.timeline)
+    const timing = row.timeline?.timing
+    toolCalls += timing?.toolCalls ?? 0
+    toolsMs += timing?.toolsMs ?? 0
+    calls += timing?.calls ?? 0
+    wallMs += timing?.wallMs ?? 0
+  }
   return {
     sessions: rows.length,
     listed,
@@ -413,6 +432,10 @@ export function kpisOf(
     turns,
     cost: estimateSessionCost(usage, prices, currency),
     cacheHit: totals === null ? null : cacheHitPercent(totals.cacheRead, totals.input + totals.cacheRead + totals.cacheWrite),
+    toolCalls,
+    toolsMs,
+    calls,
+    wallMs,
   }
 }
 

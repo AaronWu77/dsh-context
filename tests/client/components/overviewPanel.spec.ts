@@ -34,6 +34,7 @@ function timeline(over: Record<string, unknown> = {}): Record<string, unknown> {
     archive: [],
     counts: { turns: 3, steps: 5, injects: 1, compactions: 0, prunes: 0 },
     cost: { deepseek: { 'deepseek-v4-flash': { peak: { uncached: 1000, cacheRead: 500, cacheWrite: 0, output: 250 } } } },
+    timing: { wallMs: 90_000, ttftMs: 1_000, genMs: 30_000, calls: 4, toolsMs: 20_000, toolCalls: 7 },
     ...over,
   }
 }
@@ -127,12 +128,17 @@ describe('OverviewPanel', () => {
     assert.ok(text(m.container).includes('Context Insights'))
     // KPI band: 2 sessions in the 30d range, 1750 tokens billed, priced cost, cache hit.
     const labels = queryAll(m.container, '.lc-stat-label').map(el => el.textContent)
-    assert.deepEqual(labels.slice(0, 4), ['Active Sessions', 'Tokens Used', 'Cost', 'Cache Hit'])
+    assert.deepEqual(labels, ['Active Sessions', 'Tokens Used', 'Cost', 'Cache Hit', 'Tool Calls', 'Active Time'])
     const values = queryAll(m.container, '.lc-stat-value').map(el => el.textContent)
     assert.equal(values[0], '2')
     assert.equal(values[1], '1.8k')
     assert.ok(values[2].startsWith('$'), 'priced from the book')
     assert.equal(values[3], '33.33%')
+    // Tools + active time: both timed sessions fold into the band (7 calls each).
+    assert.equal(values[4], '14')
+    assert.equal(values[5], '3m0s')
+    assert.ok(text(m.container).includes('tool runs 40.0s'), 'the tool calls cell qualifies with the summed run time')
+    assert.ok(text(m.container).includes('8 model calls'), 'the active-time cell qualifies with the model-call count')
     // Heatmap drew cells for the two ledger days.
     assert.ok(queryAll(m.container, 'button.lc-heat-cell').length >= 2)
     // Cards: a (current, running, grouped), b, and c is outside the 30d range.
@@ -329,6 +335,8 @@ describe('OverviewPanel', () => {
     assert.equal(kpiValues[1], '0')
     assert.equal(kpiValues[2], '—', 'nothing priced without cost buckets')
     assert.equal(kpiValues[3], '—', 'no cache hit without billed input')
+    assert.equal(kpiValues[4], '0', 'no tool calls without timing')
+    assert.equal(kpiValues[5], '—', 'no active time without timing')
     await noTimeline.m.unmount()
   })
 
