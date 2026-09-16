@@ -200,6 +200,7 @@ export const contextTimelineSchema = z.object({
   images: z.number().int().nonnegative().optional(),
   toolCalls: z.number().int().nonnegative().optional(),
   humanInputs: z.number().int().nonnegative().optional(),
+  lastUser: z.string().optional(),
   counts: countsSchema.optional(),
   last: lastSchema.optional(),
   detailRev: z.number().int().nonnegative().optional(),
@@ -247,6 +248,7 @@ const timelineStateSchema = z.object({
   archiveFloor: z.number().optional(),
   timing: timingTotalsSchema.optional(),
   humanInputs: z.number().int().nonnegative().optional(),
+  lastUser: z.string().optional(),
   stepStart: z.object({
     time: z.number(),
     firstToken: z.number().optional(),

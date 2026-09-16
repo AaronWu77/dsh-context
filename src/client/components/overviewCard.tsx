@@ -49,6 +49,10 @@ export function makeOverviewCard(kit: ViewKit): (props: OverviewCardProps) => Re
     const project = projectOf(row.cwd)
     const group = props.group !== undefined && props.group !== project ? props.group : undefined
     const created = createdDayOf(row.activity)
+    // The footer preview: the user's newest own message, one muted hairline-
+    // separated line. Absent from rows folded before the fold carried it —
+    // the row just stays off the card.
+    const lastUser = timeline?.lastUser
     return (
       <button
         type="button"
@@ -95,6 +99,12 @@ export function makeOverviewCard(kit: ViewKit): (props: OverviewCardProps) => Re
                 <span className="lc-ov-mini-value">{props.costLabel}</span>
               </span>
             </span>
+          </span>
+        )}
+        {lastUser !== undefined && (
+          <span className="lc-ov-session-preview" title={lastUser}>
+            <span className="lc-ov-session-preview-label">{t('ov.card.lastUser')}</span>
+            <span className="lc-ov-session-preview-text">{lastUser}</span>
           </span>
         )}
       </button>

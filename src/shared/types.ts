@@ -209,6 +209,13 @@ export interface Snapshot {
    */
   humanInputs?: number
   /**
+   * The user's newest own message as a one-line bounded preview (first text
+   * block, whitespace collapsed, ~80 chars): the session cards' footer line.
+   * Additive-optional — absent from rows folded before the field existed
+   * (older hosts, idle sessions' cached rows); clients hide the line then.
+   */
+  lastUser?: string
+  /**
    * Split-generation head fields — present exactly when the host serves the
    * SLIM head (the heavy collections moved to the on-demand detail channel,
    * host/detail.ts) and absent on the inline generation (older or

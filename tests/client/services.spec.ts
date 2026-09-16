@@ -200,6 +200,20 @@ describe('timelineOf', () => {
     assert.ok(!('archiveFloor' in dropped))
   })
 
+  test('lastUser is kept only as a non-empty bounded string', () => {
+    const kept = timelineOf({ current: 1, lastUser: 'fix the flaky spec' })
+    assert.ok(kept !== null)
+    assert.equal(kept.lastUser, 'fix the flaky spec')
+    const bounded = timelineOf({ current: 1, lastUser: 'y'.repeat(500) })
+    assert.ok(bounded !== null)
+    assert.equal(bounded.lastUser?.length, 200)
+    for (const junk of ['', 7, null, {}]) {
+      const dropped = timelineOf({ current: 1, lastUser: junk })
+      assert.ok(dropped !== null)
+      assert.ok(!('lastUser' in dropped))
+    }
+  })
+
   test('cost is rebuilt per provider/model/period; garbage drops or zeroes', () => {
     const cost = {
       'deepseek-official': {

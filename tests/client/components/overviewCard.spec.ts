@@ -141,6 +141,23 @@ describe('OverviewCard', () => {
     await m.unmount()
   })
 
+  test('the last-user-message footer renders the labeled preview with the full text on the tip; absent stays absent', async () => {
+    const withPreview = await mount(h(Card, {
+      row: rowOf({ timeline: { ...TIMELINE, lastUser: 'fix the flaky spec' } as unknown as ContextTimeline }),
+      costLabel: '—',
+      now: NOW,
+      onOpen: () => {},
+    }))
+    const preview = query(withPreview.container, '.lc-ov-session-preview')
+    assert.equal(preview.getAttribute('title'), 'fix the flaky spec')
+    assert.equal(query(withPreview.container, '.lc-ov-session-preview-label').textContent, 'Last message')
+    assert.equal(query(withPreview.container, '.lc-ov-session-preview-text').textContent, 'fix the flaky spec')
+    await withPreview.unmount()
+    const bare = await mount(h(Card, { row: rowOf({ timeline: TIMELINE }), costLabel: '—', now: NOW, onOpen: () => {} }))
+    assert.equal(queryAll(bare.container, '.lc-ov-session-preview').length, 0, 'no preview line without the fold field')
+    await bare.unmount()
+  })
+
   test('clicking relays the session id', async () => {
     const opened: string[] = []
     const m = await mount(h(Card, { row: rowOf({ id: 'xyz' }), costLabel: '—', now: NOW, onOpen: (id) => { opened.push(id) } }))

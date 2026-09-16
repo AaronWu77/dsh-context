@@ -1,7 +1,7 @@
 /*
  * The Context Insights panel: the sidebar-foot entry button (stacked above
  * Settings by the harness's own foot layout) and the frame-wide overlay
- * panel it opens — a 3:7 body of insight column (KPI 2×2 block over the
+ * panel it opens — a 3:7 body of insight column (KPI 2×3 block over the
  * activity heatmap) beside the session column (search, chips, card grid).
  * The backdrop is the `lc-ov` query container (it spans the viewport, and
  * the card sizes off the viewport too), so the column fold keys off the
@@ -39,7 +39,7 @@
 .lc-ov-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
 .lc-ov-head .lc-modal-close { margin-left: 0; flex: none; }
 
-/* ---- the body: a 3:7 column pair — the insight column (KPI 2×2 over the
+/* ---- the body: a 3:7 column pair — the insight column (KPI 2×3 over the
    heat) beside the session column; under width pressure it folds to one
    full-width column and the whole card scrolls in normal flow (no capped
    inner scrollers to overlap). ---- */
@@ -56,7 +56,7 @@
 /* border-box keeps the card tracks true outer widths: under the harness's
    content-box default the padding quietly adds ~30px per card. */
 .lc-ov-left > .lc-card { margin-bottom: 0; min-width: 0; box-sizing: border-box; }
-.lc-ov-kpis { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr); gap: 10px; }
+.lc-ov-kpis { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, 1fr); gap: 10px; }
 .lc-ov-kpi { align-items: center; padding: 10px 8px; }
 .lc-ov-kpi .lc-stat-value { font-size: 20px; }
 /* The heat card absorbs the insight column's leftover height (the grid
@@ -135,6 +135,15 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 .lc-ov-mini-label { flex: none; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .lc-ov-mini-value { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lc-ov-session-empty { color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.5; padding: 6px 0; }
+/* The last-user-message footer: a hairline-ruled caption anchoring the card's
+   tail — the label names the line, the message text follows in the primary
+   label color (the fold already bounds it; the full text stays on the tip).
+   The auto top margin pins it to the bottom edge when a taller sibling
+   stretches the row; the rule (not a bubble or a quote glyph) keeps it quiet
+   next to the donut row and survives both themes via the border token. */
+.lc-ov-session-preview { display: flex; align-items: baseline; gap: 6px; margin-top: auto; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 60%, transparent); min-width: 0; }
+.lc-ov-session-preview-label { flex: none; color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.lc-ov-session-preview-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-size: 11px; line-height: 1.5; }
 
 /* ---- the grid pager: one row under the card grid, only when it spans pages ---- */
 .lc-ov-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }

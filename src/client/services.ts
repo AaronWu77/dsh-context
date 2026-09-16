@@ -417,6 +417,7 @@ export function timelineOf(value: unknown): ContextTimeline | null {
     ...(typeof data.images === 'number' ? { images: data.images } : {}),
     ...(typeof data.toolCalls === 'number' ? { toolCalls: data.toolCalls } : {}),
     ...(typeof data.humanInputs === 'number' ? { humanInputs: data.humanInputs } : {}),
+    ...(typeof data.lastUser === 'string' && data.lastUser !== '' ? { lastUser: data.lastUser.slice(0, 200) } : {}),
     archive: objectsOf(data.archive),
     ...(counts !== undefined ? { counts } : {}),
     ...(last !== undefined ? { last } : {}),
