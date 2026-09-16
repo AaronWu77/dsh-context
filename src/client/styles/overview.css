@@ -1,0 +1,104 @@
+/*
+ * The Context Dashboard: the sidebar-foot entry button (stacked above
+ * Settings by the harness's own foot layout) and the frame-wide overlay
+ * panel it opens — KPI band, activity heatmap, aggregate composition donut,
+ * and the session card grid. The overlay card is the `lc-ov` query
+ * container, so every fold (KPI 4→2, chart stack, grid columns) keys off
+ * the card's own width. Inline-size containment is safe here: the card
+ * carries no fullscreen overlay of its own (heat tooltips are native), so
+ * the fixed-containing-block trap cannot catch anything.
+ */
+
+/* ---- the sidebar-foot entry ---- */
+.lc-ov-entry { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; cursor: pointer; transition: background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-ov-entry:hover { background: var(--dsw-alias-bg-layer-2); }
+/* The wide column's label turns the centered rail icon into a left-aligned row. */
+.lc-ov-entry:has(.lc-ov-entry-label) { justify-content: flex-start; }
+.lc-ov-entry-icon { flex: none; }
+.lc-ov-entry-label { flex: 1 1 auto; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The running-sessions badge: the footer's one live fact, pinned to the icon's corner in both column widths. */
+.lc-ov-badge { position: absolute; top: 1px; right: 4px; min-width: 15px; height: 15px; box-sizing: border-box; border-radius: 999px; background: var(--color-green-500); color: #fff; font-size: 9px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0 4px; pointer-events: none; }
+
+/* ---- the overlay chrome ---- */
+.lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); display: flex; align-items: center; justify-content: center; }
+.lc-ov-card { width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow-y: auto; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; container: lc-ov / inline-size; }
+.lc-ov-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.lc-ov-head-icon { flex: none; }
+.lc-ov-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
+.lc-ov-head .lc-modal-close { margin-left: 0; flex: none; }
+
+/* ---- the KPI band (4 cells, 2 under width pressure) ---- */
+.lc-ov-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.lc-ov-kpi { align-items: center; padding: 10px 8px; }
+.lc-ov-kpi .lc-stat-value { font-size: 20px; }
+@container lc-ov (max-width: 640px) {
+  .lc-ov-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- the charts row: heatmap card beside the composition card, wrapping as a pair ---- */
+.lc-ov-charts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.lc-ov-charts > .lc-card { margin-bottom: 0; min-width: 0; }
+.lc-ov-heat-card { flex: 3 1 400px; display: flex; flex-direction: column; }
+.lc-ov-comp-card { flex: 2 1 300px; }
+.lc-ov-comp-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+
+/*
+ * The activity heatmap: square cells that STRETCH to fill the card (the
+ * columns share the row width and each cell keeps a 1:1 ratio), so the grid
+ * reads as a full-width chart instead of a corner stamp; the block centers
+ * vertically in the card's free space. Monday-first, four depth steps.
+ */
+.lc-heat { display: flex; gap: 4px; flex: 1; align-items: center; }
+.lc-heat-wds { display: flex; flex-direction: column; gap: 3px; align-self: stretch; }
+.lc-heat-wd { flex: 1; width: 10px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--dsw-alias-label-secondary); text-align: center; }
+.lc-heat-cols { display: flex; gap: 3px; flex: 1; }
+.lc-heat-col { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.lc-heat-cell { width: 100%; aspect-ratio: 1; box-sizing: border-box; border: 0; border-radius: 20%; padding: 0; background: var(--dsw-alias-bg-layer-2); cursor: default; }
+button.lc-heat-cell { cursor: pointer; }
+button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-blue-500) 70%, transparent); }
+.lc-heat-future { background: transparent; }
+.lc-heat-1 { background: color-mix(in srgb, var(--color-blue-500) 28%, transparent); }
+.lc-heat-2 { background: color-mix(in srgb, var(--color-blue-500) 50%, transparent); }
+.lc-heat-3 { background: color-mix(in srgb, var(--color-blue-500) 72%, transparent); }
+.lc-heat-4 { background: color-mix(in srgb, var(--color-blue-500) 92%, transparent); }
+/* The pinned day (the grid filter's source) keeps a solid ring in both themes. */
+.lc-heat-on { box-shadow: 0 0 0 1.5px var(--color-blue-500); }
+
+/* ---- the session list head: title, count, day chip, search, sort ---- */
+.lc-ov-list-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.lc-ov-list-title { font-weight: 600; white-space: nowrap; }
+.lc-ov-list-count { color: var(--dsw-alias-label-secondary); font-size: 11px; font-variant-numeric: tabular-nums; background: var(--dsw-alias-bg-layer-2); border-radius: 8px; padding: 1px 7px; }
+.lc-ov-day-chip { border: 1px solid color-mix(in srgb, var(--color-blue-500) 45%, transparent); color: var(--color-blue-500); background: color-mix(in srgb, var(--color-blue-500) 10%, transparent); border-radius: 999px; font-size: 11px; line-height: 1.4; padding: 1px 10px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.lc-ov-search { flex: 1 1 150px; min-width: 110px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); outline: none; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-ov-search:focus { border-color: var(--dsw-alias-label-secondary); }
+.lc-ov-search::placeholder { color: var(--dsw-alias-label-secondary); }
+
+/* ---- the group filter chips (workspace groups + the ungrouped bucket) ---- */
+.lc-ov-groups { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 10px; }
+.lc-ov-chip { display: inline-flex; align-items: baseline; gap: 5px; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-secondary); border-radius: 999px; font: inherit; font-size: 11px; line-height: 1.5; padding: 2px 10px; cursor: pointer; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-ov-chip:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-label-secondary); }
+.lc-ov-chip-on, .lc-ov-chip-on:hover { background: var(--dsw-alias-button-primary-fill); border-color: transparent; color: var(--dsw-alias-label-primary-foreground); }
+.lc-ov-chip-n { font-variant-numeric: tabular-nums; opacity: 0.65; font-size: 10px; }
+.lc-ov-chip-on .lc-ov-chip-n { opacity: 0.85; }
+
+/* ---- the session card grid ---- */
+.lc-ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.lc-ov-session { display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-ov-session:hover { border-color: var(--dsw-alias-label-secondary); background: var(--dsw-alias-bg-layer-2); }
+.lc-ov-session-current { border-color: color-mix(in srgb, var(--color-blue-500) 65%, transparent); }
+.lc-ov-session-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lc-ov-running { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--color-green-500); }
+.lc-ov-session-title { flex: 1 1 auto; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-ov-current { flex: none; font-size: 10px; line-height: 1.5; color: var(--color-blue-500); border: 1px solid color-mix(in srgb, var(--color-blue-500) 45%, transparent); border-radius: 4px; padding: 0 4px; }
+.lc-ov-session-time { flex: none; color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: nowrap; }
+/* The breadcrumb row: workspace group / project basename (the full path stays on the row's tooltip). */
+.lc-ov-session-crumb { display: flex; align-items: baseline; gap: 5px; min-width: 0; font-size: 11px; color: var(--dsw-alias-label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-ov-crumb-group { flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.lc-ov-crumb-sep { flex: none; opacity: 0.55; }
+.lc-ov-crumb-project { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--ds-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace); }
+.lc-ov-session-body { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.lc-ov-mini-stats { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lc-ov-mini-stat { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; }
+.lc-ov-mini-label { color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.lc-ov-mini-value { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lc-ov-session-empty { color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.5; padding: 6px 0; }

@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import {
+  activityOf,
   canOpenPathsOf,
   contextBreakdownOf,
   contextPressureOf,
@@ -809,5 +810,41 @@ describe('openResourceVia', () => {
     // The plugin unloaded (HMR): the written face is gone.
     services.sidebarRight = undefined
     assert.equal(open('dsh-resource://file/session/s1/a.ts'), false)
+  })
+})
+
+describe('activityOf', () => {
+  test('absent or non-record values stay null (an older host serves no such key)', () => {
+    assert.equal(activityOf(null), null)
+    assert.equal(activityOf(undefined), null)
+    assert.equal(activityOf(7), null)
+    assert.equal(activityOf('x'), null)
+    assert.equal(activityOf({}), null, 'a record without a days map')
+    assert.equal(activityOf({ days: 7 }), null)
+    assert.equal(activityOf({ days: [] }), null, 'an array is not a ledger')
+  })
+
+  test('a well-formed payload passes through untouched (reference-stable)', () => {
+    const wire = { days: { '2026-09-16': { tokens: 15, requests: 1 }, '2026-09-15': { tokens: 0, requests: 3 } } }
+    assert.ok(activityOf(wire) === (wire as never))
+    assert.deepEqual(activityOf({ days: {} }), { days: {} })
+  })
+
+  test('malformed entries drop individually; the readable days survive', () => {
+    const out = activityOf({
+      days: {
+        '2026-09-16': { tokens: 15, requests: 1 },
+        '09-16': { tokens: 1, requests: 1 },
+        '2026-09-17': null,
+        '2026-09-18': [1, 2],
+        '2026-09-19': { tokens: 'x', requests: 1 },
+        '2026-09-20': { tokens: Number.NaN, requests: 1 },
+        '2026-09-21': { tokens: -3, requests: 1 },
+        '2026-09-22': { tokens: 1, requests: 'x' },
+        '2026-09-23': { tokens: 1, requests: Number.POSITIVE_INFINITY },
+        '2026-09-24': { tokens: 1, requests: -1 },
+      },
+    })
+    assert.deepEqual(out, { days: { '2026-09-16': { tokens: 15, requests: 1 } } })
   })
 })
