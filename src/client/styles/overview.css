@@ -1,13 +1,14 @@
 /*
  * The Context Insights panel: the sidebar-foot entry button (stacked above
  * Settings by the harness's own foot layout) and the frame-wide overlay
- * panel it opens — a 2:3 body of insight column (KPI 2×2 block over the
+ * panel it opens — a 3:7 body of insight column (KPI 2×2 block over the
  * activity heatmap) beside the session column (search, chips, card grid).
- * The overlay card is the `lc-ov` query container, so the column fold keys
- * off the card's own width. Inline-size containment is safe here: the card
- * carries no fullscreen overlay of its own, and the heat cells' Tooltip
- * bubbles position correctly against the viewport despite the card's layout
- * containment (checked in the browser).
+ * The backdrop is the `lc-ov` query container (it spans the viewport, and
+ * the card sizes off the viewport too), so the column fold keys off the
+ * viewport width; on the folded width the card itself scrolls in normal
+ * flow. Inline-size containment is safe here: the backdrop IS the viewport
+ * rectangle, so the heat cells' fixed-position Tooltip bubbles keep their
+ * viewport coordinates.
  */
 
 /* ---- the sidebar-foot entry ---- */
@@ -24,26 +25,33 @@
 .lc-ov-badge { position: absolute; top: 1px; right: 4px; min-width: 15px; height: 15px; box-sizing: border-box; border-radius: 999px; background: var(--color-green-500); color: #fff; font-size: 9px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0 4px; pointer-events: none; }
 
 /* ---- the overlay chrome ---- */
-.lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); display: flex; align-items: center; justify-content: center; }
+/* The backdrop carries the `lc-ov` container: it spans the viewport exactly,
+   so queries against it track the card's own sizing basis (the card is
+   min(1120px, 100vw - 32px)) without making the card unable to query itself. */
+.lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); display: flex; align-items: center; justify-content: center; container: lc-ov / inline-size; }
 /* The card is a flex column capped at its max-height: the body fills the
    rest and each column scrolls its own overflow, so browsing sessions never
-   scrolls the insight column out of view. Hidden (not scrollable) here —
-   the scrollers live on the columns, and on narrow widths on the body. */
-.lc-ov-card { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow: hidden; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; container: lc-ov / inline-size; }
+   scrolls the insight column out of view. On the folded width the card
+   scrolls whole (see the container query at the body). */
+.lc-ov-card { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow: hidden; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; }
 .lc-ov-head { flex: none; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .lc-ov-head-icon { flex: none; }
 .lc-ov-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
 .lc-ov-head .lc-modal-close { margin-left: 0; flex: none; }
 
-/* ---- the body: a 2:3 column pair — the insight column (KPI 2×2 over the
+/* ---- the body: a 3:7 column pair — the insight column (KPI 2×2 over the
    heat) beside the session column; under width pressure it folds to one
-   full-width column and the body itself becomes the scroller. ---- */
-.lc-ov-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 10px; }
+   full-width column and the whole card scrolls in normal flow (no capped
+   inner scrollers to overlap). ---- */
+.lc-ov-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: 10px; }
 .lc-ov-left { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .lc-ov-right { min-height: 0; overflow-y: auto; }
-@container lc-ov (max-width: 760px) {
-  .lc-ov-body { grid-template-columns: 1fr; overflow-y: auto; }
-  .lc-ov-left, .lc-ov-right { overflow: visible; }
+@container lc-ov (max-width: 932px) {
+  .lc-ov-card { overflow-y: auto; }
+  .lc-ov-body { display: block; }
+  .lc-ov-left { margin-bottom: 12px; }
+  .lc-ov-left, .lc-ov-right { overflow: visible; min-height: auto; }
+  .lc-ov-heat-card { flex: none; }
 }
 /* border-box keeps the card tracks true outer widths: under the harness's
    content-box default the padding quietly adds ~30px per card. */
