@@ -6,12 +6,18 @@
  * column, its label; a badge counts the sessions currently running (the one
  * glanceable live fact a footer can carry). Clicking opens the overview
  * overlay through the shared module store (overviewStore.ts).
+ *
+ * The per-user `insightsEntry` preference takes the entry down (renders
+ * null) without unregistering the seat. The subscription fails open: an
+ * absent settings store, an unserved namespace, or a value the plugin
+ * cannot understand all leave the entry visible.
  */
 
-import type { ReactElement } from 'react'
+import { useSyncExternalStore, type ReactElement } from 'react'
 import { ContextIcon } from '../icon'
 import { runningCountOf, sessionsSnapshotOf } from '../overview'
 import { overviewStore } from '../overviewStore'
+import type { ContextSettings, InsightsEntry } from '../settings'
 import type { ViewKit } from '../viewkit'
 
 export interface OverviewButtonProps {
@@ -21,11 +27,24 @@ export interface OverviewButtonProps {
   useSessions?: unknown
 }
 
-export function makeOverviewButton(kit: ViewKit): (props: OverviewButtonProps) => ReactElement {
+/** Stable subscription faces for the settings-less degrade (no re-subscribes). */
+const subscribeNever = (): (() => void) => () => {}
+const entryShown = (): 'show' => 'show'
+
+export function makeOverviewButton(kit: ViewKit, settings?: ContextSettings): (props: OverviewButtonProps) => ReactElement | null {
   const { t } = kit
-  return function OverviewButton(props: OverviewButtonProps): ReactElement {
+  // Stable per-factory faces: useSyncExternalStore resubscribes when the
+  // subscribe identity changes, so both wrappers are made once, here.
+  const subscribeEntry = settings === undefined
+    ? subscribeNever
+    : (listener: () => void): (() => void) => settings.store.subscribe(listener)
+  const getEntry = settings === undefined ? entryShown : (): InsightsEntry => settings.insightsEntry()
+  return function OverviewButton(props: OverviewButtonProps): ReactElement | null {
     // The hook-level read (unconditional, guarded inside); the badge hides at 0.
     const running = runningCountOf(sessionsSnapshotOf(props))
+    // The entry toggle: subscribed, so a preference flip takes effect live.
+    const entry = useSyncExternalStore(subscribeEntry, getEntry)
+    if (entry === 'hide') return null
     return (
       <button
         type="button"
