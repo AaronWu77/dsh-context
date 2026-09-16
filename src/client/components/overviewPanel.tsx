@@ -6,12 +6,12 @@
  * projection values), so the panel draws every session's insight without
  * opening one log.
  *
- * Top to bottom: the range picker (7d / 30d / all) scopes the insight band —
- * the KPI 2×2 block and the activity heatmap share one folding row — above
- * the session grid; the activity heatmap keeps its own fixed 8-week window
- * and PINs the grid to a picked day (the panel's drill-down gesture). A
- * session card click jumps to that session through the harness's own
- * `sessions.open` and closes the panel.
+ * The body is a 2:3 column pair: the insight column (the KPI 2×2 block over
+ * the activity heatmap) beside the session column (search, group chips, and
+ * the card grid); the heatmap keeps its own fixed 8-week window and PINs the
+ * list to a picked day (the panel's drill-down gesture). A session card
+ * click jumps to that session through the harness's own `sessions.open` and
+ * closes the panel.
  */
 
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactElement } from 'react'
@@ -134,8 +134,8 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
           {rows === null ? (
             <div className="lc-empty">{t('ov.unavailable')}</div>
           ) : (
-            <>
-              <div className="lc-ov-mid">
+            <div className="lc-ov-body">
+              <div className="lc-ov-left">
                 <div className="lc-ov-kpis">
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('ov.kpi.sessions')}</span>
@@ -167,90 +167,92 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                 </div>
               </div>
 
-              <div className="lc-ov-list-head">
-                <span className="lc-ov-list-title">{t('ov.list.title')}</span>
-                <span className="lc-ov-list-count">{visible.length}</span>
-                {day !== null && (
-                  <button type="button" className="lc-ov-day-chip" title={t('ov.list.dayClear')} onClick={() => { setDay(null) }}>
-                    {t('ov.list.dayFilter', { day })} ×
-                  </button>
-                )}
-                <input
-                  className="lc-ov-search"
-                  type="search"
-                  value={query}
-                  placeholder={t('ov.list.search')}
-                  aria-label={t('ov.list.search')}
-                  onChange={(ev) => { setQuery(ev.target.value) }}
-                />
-                <div className="lc-gran" role="group" aria-label={t('ov.list.sortLabel')}>
-                  {SORTS.map(s => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={'lc-gran-btn' + (sort === s ? ' lc-gran-on' : '')}
-                      onClick={() => { setSort(s) }}
-                    >{t('ov.list.sort.' + s)}</button>
-                  ))}
-                </div>
-              </div>
-
-              {chips.length > 0 && (
-                <div className="lc-ov-groups" role="group" aria-label={t('ov.group.label')}>
-                  <button
-                    type="button"
-                    className={'lc-ov-chip' + (group === null ? ' lc-ov-chip-on' : '')}
-                    onClick={() => { setGroup(null) }}
-                  >{t('ov.range.all')}<span className="lc-ov-chip-n">{scoped.length}</span></button>
-                  {chips.map(c => (
-                    <button
-                      key={c.key}
-                      type="button"
-                      className={'lc-ov-chip' + (group === c.key ? ' lc-ov-chip-on' : '')}
-                      onClick={() => { setGroup(group === c.key ? null : c.key) }}
-                    >{c.key === UNGROUPED_KEY ? t('ov.group.ungrouped') : c.key}<span className="lc-ov-chip-n">{c.count}</span></button>
-                  ))}
-                </div>
-              )}
-
-              {visible.length === 0 ? (
-                <div className="lc-empty">{t(allRows.length === 0 ? 'ov.list.empty' : 'ov.list.noMatch')}</div>
-              ) : (
-                <>
-                  <div className="lc-ov-grid">
-                    {paged.items.map(row => (
-                      <OverviewCard
-                        key={row.id}
-                        row={row}
-                        {...(groups?.[row.id] !== undefined ? { group: groups[row.id] } : {})}
-                        costLabel={cardCostOf(row, prices, currency)}
-                        now={now}
-                        onOpen={openOne}
-                      />
+              <div className="lc-ov-right">
+                <div className="lc-ov-list-head">
+                  <span className="lc-ov-list-title">{t('ov.list.title')}</span>
+                  <span className="lc-ov-list-count">{visible.length}</span>
+                  {day !== null && (
+                    <button type="button" className="lc-ov-day-chip" title={t('ov.list.dayClear')} onClick={() => { setDay(null) }}>
+                      {t('ov.list.dayFilter', { day })} ×
+                    </button>
+                  )}
+                  <input
+                    className="lc-ov-search"
+                    type="search"
+                    value={query}
+                    placeholder={t('ov.list.search')}
+                    aria-label={t('ov.list.search')}
+                    onChange={(ev) => { setQuery(ev.target.value) }}
+                  />
+                  <div className="lc-gran" role="group" aria-label={t('ov.list.sortLabel')}>
+                    {SORTS.map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={'lc-gran-btn' + (sort === s ? ' lc-gran-on' : '')}
+                        onClick={() => { setSort(s) }}
+                      >{t('ov.list.sort.' + s)}</button>
                     ))}
                   </div>
-                  {paged.count > 1 && (
-                    <div className="lc-ov-pager" role="navigation" aria-label={t('ov.list.pager')}>
+                </div>
+
+                {chips.length > 0 && (
+                  <div className="lc-ov-groups" role="group" aria-label={t('ov.group.label')}>
+                    <button
+                      type="button"
+                      className={'lc-ov-chip' + (group === null ? ' lc-ov-chip-on' : '')}
+                      onClick={() => { setGroup(null) }}
+                    >{t('ov.range.all')}<span className="lc-ov-chip-n">{scoped.length}</span></button>
+                    {chips.map(c => (
                       <button
+                        key={c.key}
                         type="button"
-                        className="lc-ov-pager-btn"
-                        disabled={paged.index === 0}
-                        aria-label={t('ov.list.prev')}
-                        onClick={() => { setPage(paged.index - 1) }}
-                      >‹</button>
-                      <span className="lc-ov-pager-n">{t('ov.list.page', { n: paged.index + 1, total: paged.count })}</span>
-                      <button
-                        type="button"
-                        className="lc-ov-pager-btn"
-                        disabled={paged.index === paged.count - 1}
-                        aria-label={t('ov.list.next')}
-                        onClick={() => { setPage(paged.index + 1) }}
-                      >›</button>
+                        className={'lc-ov-chip' + (group === c.key ? ' lc-ov-chip-on' : '')}
+                        onClick={() => { setGroup(group === c.key ? null : c.key) }}
+                      >{c.key === UNGROUPED_KEY ? t('ov.group.ungrouped') : c.key}<span className="lc-ov-chip-n">{c.count}</span></button>
+                    ))}
+                  </div>
+                )}
+
+                {visible.length === 0 ? (
+                  <div className="lc-empty">{t(allRows.length === 0 ? 'ov.list.empty' : 'ov.list.noMatch')}</div>
+                ) : (
+                  <>
+                    <div className="lc-ov-grid">
+                      {paged.items.map(row => (
+                        <OverviewCard
+                          key={row.id}
+                          row={row}
+                          {...(groups?.[row.id] !== undefined ? { group: groups[row.id] } : {})}
+                          costLabel={cardCostOf(row, prices, currency)}
+                          now={now}
+                          onOpen={openOne}
+                        />
+                      ))}
                     </div>
-                  )}
-                </>
-              )}
-            </>
+                    {paged.count > 1 && (
+                      <div className="lc-ov-pager" role="navigation" aria-label={t('ov.list.pager')}>
+                        <button
+                          type="button"
+                          className="lc-ov-pager-btn"
+                          disabled={paged.index === 0}
+                          aria-label={t('ov.list.prev')}
+                          onClick={() => { setPage(paged.index - 1) }}
+                        >‹</button>
+                        <span className="lc-ov-pager-n">{t('ov.list.page', { n: paged.index + 1, total: paged.count })}</span>
+                        <button
+                          type="button"
+                          className="lc-ov-pager-btn"
+                          disabled={paged.index === paged.count - 1}
+                          aria-label={t('ov.list.next')}
+                          onClick={() => { setPage(paged.index + 1) }}
+                        >›</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

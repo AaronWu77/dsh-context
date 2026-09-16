@@ -1,12 +1,13 @@
 /*
- * The Context Dashboard: the sidebar-foot entry button (stacked above
+ * The Context Insights panel: the sidebar-foot entry button (stacked above
  * Settings by the harness's own foot layout) and the frame-wide overlay
- * panel it opens — KPI band, activity heatmap, and the session card grid.
- * The overlay card is the `lc-ov` query container, so every fold (chart
- * stack, grid columns) keys off the card's own width. Inline-size
- * containment is safe here: the card carries no fullscreen overlay of its
- * own (heat tooltips are native), so the fixed-containing-block trap cannot
- * catch anything.
+ * panel it opens — a 2:3 body of insight column (KPI 2×2 block over the
+ * activity heatmap) beside the session column (search, chips, card grid).
+ * The overlay card is the `lc-ov` query container, so the column fold keys
+ * off the card's own width. Inline-size containment is safe here: the card
+ * carries no fullscreen overlay of its own, and the heat cells' Tooltip
+ * bubbles position correctly against the viewport despite the card's layout
+ * containment (checked in the browser).
  */
 
 /* ---- the sidebar-foot entry ---- */
@@ -24,26 +25,35 @@
 
 /* ---- the overlay chrome ---- */
 .lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); display: flex; align-items: center; justify-content: center; }
-.lc-ov-card { width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow-y: auto; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; container: lc-ov / inline-size; }
-.lc-ov-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+/* The card is a flex column capped at its max-height: the body fills the
+   rest and each column scrolls its own overflow, so browsing sessions never
+   scrolls the insight column out of view. Hidden (not scrollable) here —
+   the scrollers live on the columns, and on narrow widths on the body. */
+.lc-ov-card { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow: hidden; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; container: lc-ov / inline-size; }
+.lc-ov-head { flex: none; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .lc-ov-head-icon { flex: none; }
 .lc-ov-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
 .lc-ov-head .lc-modal-close { margin-left: 0; flex: none; }
 
-/* ---- the mid band: the KPI 2×2 block and the activity heat share one row; flex-wrap folds the heat onto its own row under width pressure ---- */
-.lc-ov-mid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-/* border-box keeps the flex bases true outer widths: under the harness's
-   content-box default the padding quietly adds ~30px per card and the row
-   wraps at full width. */
-.lc-ov-mid > .lc-card { margin-bottom: 0; min-width: 0; box-sizing: border-box; }
-.lc-ov-kpis { flex: 1 1 320px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr); gap: 10px; }
+/* ---- the body: a 2:3 column pair — the insight column (KPI 2×2 over the
+   heat) beside the session column; under width pressure it folds to one
+   full-width column and the body itself becomes the scroller. ---- */
+.lc-ov-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 10px; }
+.lc-ov-left { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.lc-ov-right { min-height: 0; overflow-y: auto; }
+@container lc-ov (max-width: 760px) {
+  .lc-ov-body { grid-template-columns: 1fr; overflow-y: auto; }
+  .lc-ov-left, .lc-ov-right { overflow: visible; }
+}
+/* border-box keeps the card tracks true outer widths: under the harness's
+   content-box default the padding quietly adds ~30px per card. */
+.lc-ov-left > .lc-card { margin-bottom: 0; min-width: 0; box-sizing: border-box; }
+.lc-ov-kpis { flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 1fr); gap: 10px; }
 .lc-ov-kpi { align-items: center; padding: 10px 8px; }
 .lc-ov-kpi .lc-stat-value { font-size: 20px; }
-.lc-ov-heat-card { flex: 0 1 252px; display: flex; flex-direction: column; }
-/* Stacked on its own wrapped row (narrow panes), the heat card stretches again — the grid just centers wider. */
-@container lc-ov (max-width: 680px) {
-  .lc-ov-heat-card { flex: 1 1 252px; }
-}
+/* The heat card absorbs the insight column's leftover height (the grid
+   centers inside it) but never shrinks below its own grid. */
+.lc-ov-heat-card { flex: 1 0 auto; display: flex; flex-direction: column; }
 
 /*
  * The activity heatmap: fixed-size square cells (8 week columns ≈ a 200px
