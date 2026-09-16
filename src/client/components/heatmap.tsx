@@ -3,24 +3,23 @@
  * (weeks as columns, Monday-first weekdays as rows) over the merged daily
  * ledger (overview.ts). Cell depth is the day's billed-token share of the
  * window's maximum, in four steps; a day with data is a button whose click
- * pins the session list to that day (click again to release). The grid is
- * computed from the injected `today` key, so the layout is deterministic in
- * tests and follows the browser's local calendar at runtime.
+ * pins the session list to that day (click again to release). Cells tip
+ * through the harness's own Tooltip primitive (instant on hover; native
+ * `title` lags a second behind), the bubble carrying the date and the day's
+ * active sessions. The grid is computed from the injected `today` key, so
+ * the layout is deterministic in tests and follows the browser's local
+ * calendar at runtime.
  */
 
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReactElement } from 'react'
 import { dayKeyOf, mondayOfWeek, shiftDayKey } from '../../shared/days'
-import { fmt } from '../format'
+import { type DayTotals } from '../overview'
 import type { ViewKit } from '../viewkit'
-
-export interface HeatmapDay {
-  tokens: number
-  requests: number
-}
 
 export interface HeatmapProps {
   /** Merged ledger (day key → that day's figures). */
-  days: Record<string, HeatmapDay>
+  days: Record<string, DayTotals>
   /** Columns to draw (default 8 — two months). */
   weeks?: number
   /** The pinned day key, when the list is filtered to a day. */
@@ -34,7 +33,7 @@ export interface HeatmapProps {
 /** One grid cell: its key, its ledger entry (undefined = no activity), and whether it is in the future. */
 interface HeatCell {
   key: string
-  entry?: HeatmapDay
+  entry?: DayTotals
   future: boolean
 }
 
@@ -84,7 +83,7 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
     if (columns === null) return <div className="lc-empty">{t('ov.heat.empty')}</div>
     // Join the ledger onto the grid and price the depth scale. The record is
     // widened honestly: a day-key read can miss at runtime.
-    const byKey: Record<string, HeatmapDay | undefined> = props.days
+    const byKey: Record<string, DayTotals | undefined> = props.days
     let max = 0
     let any = false
     for (const column of columns) {
@@ -114,20 +113,24 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
                 if (cell.future) return <span key={cell.key} className="lc-heat-cell lc-heat-future" aria-hidden="true" />
                 const level = cell.entry === undefined ? 0 : levelOf(cell.entry.tokens, max)
                 if (cell.entry === undefined) {
-                  return <span key={cell.key} className="lc-heat-cell lc-heat-0" title={cell.key} />
+                  return (
+                    <Tooltip key={cell.key} label={cell.key} side="top">
+                      <span className="lc-heat-cell lc-heat-0" />
+                    </Tooltip>
+                  )
                 }
                 const picked = props.selected === cell.key
-                const label = `${cell.key} · ${fmt(cell.entry.tokens)} tokens · ${t('ov.heat.calls', { n: cell.entry.requests })}`
+                const label = `${cell.key}\n${t('ov.heat.sessions', { n: cell.entry.sessions })}`
                 return (
-                  <button
-                    key={cell.key}
-                    type="button"
-                    className={`lc-heat-cell lc-heat-${String(level)}${picked ? ' lc-heat-on' : ''}`}
-                    title={label}
-                    aria-label={label}
-                    aria-pressed={picked}
-                    onClick={() => { if (props.onSelect !== undefined) props.onSelect(picked ? null : cell.key) }}
-                  />
+                  <Tooltip key={cell.key} label={label} side="top">
+                    <button
+                      type="button"
+                      className={`lc-heat-cell lc-heat-${String(level)}${picked ? ' lc-heat-on' : ''}`}
+                      aria-label={label}
+                      aria-pressed={picked}
+                      onClick={() => { if (props.onSelect !== undefined) props.onSelect(picked ? null : cell.key) }}
+                    />
+                  </Tooltip>
                 )
               })}
             </div>

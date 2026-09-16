@@ -355,8 +355,19 @@ describe('aggregateDays', () => {
       rowOf(),
     ]
     assert.deepEqual(aggregateDays(rows), {
-      '2026-09-16': { tokens: 12, requests: 4 },
-      '2026-09-15': { tokens: 2, requests: 2 },
+      '2026-09-16': { tokens: 12, requests: 4, sessions: 2 },
+      '2026-09-15': { tokens: 2, requests: 2, sessions: 1 },
+    })
+  })
+
+  test('a zeroed day entry is no activity: it counts no session and makes no day', () => {
+    const rows = [
+      rowOf({ activity: { days: { '2026-09-16': { tokens: 0, requests: 0 }, '2026-09-15': { tokens: 3, requests: 1 } } } }),
+      rowOf({ activity: { days: { '2026-09-16': { tokens: 1, requests: 1 } } } }),
+    ]
+    assert.deepEqual(aggregateDays(rows), {
+      '2026-09-16': { tokens: 1, requests: 1, sessions: 1 },
+      '2026-09-15': { tokens: 3, requests: 1, sessions: 1 },
     })
   })
 })

@@ -416,23 +416,35 @@ export function kpisOf(
   }
 }
 
+/** One merged day of the daily ledgers: billed tokens, model requests, and the sessions active that day. */
+export interface DayTotals {
+  tokens: number
+  requests: number
+  sessions: number
+}
+
 /**
- * Merge every row's daily ledger into one — the heatmap's data. Days carry
- * two integers each; the merged record stays small even over long histories.
+ * Merge every row's daily ledger into one — the heatmap's data. A session
+ * counts toward a day only when its own entry carries activity, mirroring
+ * the day filter's predicate, so the cell's tooltip previews the click; a
+ * zeroed entry is skipped whole. The merged record stays small even over
+ * long histories.
  */
-export function aggregateDays(rows: readonly OverviewRow[]): Record<string, { tokens: number; requests: number }> {
-  const days: Record<string, { tokens: number; requests: number }> = {}
+export function aggregateDays(rows: readonly OverviewRow[]): Record<string, DayTotals> {
+  const days: Record<string, DayTotals> = {}
   // Widened honestly: a Record index read can miss at runtime.
-  const byKey: Record<string, { tokens: number; requests: number } | undefined> = days
+  const byKey: Record<string, DayTotals | undefined> = days
   for (const row of rows) {
     if (row.activity === null) continue
     for (const key of Object.keys(row.activity.days)) {
       const entry = row.activity.days[key]
+      if (entry.tokens <= 0 && entry.requests <= 0) continue
       const prev = byKey[key]
-      if (prev === undefined) days[key] = { tokens: entry.tokens, requests: entry.requests }
+      if (prev === undefined) days[key] = { tokens: entry.tokens, requests: entry.requests, sessions: 1 }
       else {
         prev.tokens += entry.tokens
         prev.requests += entry.requests
+        prev.sessions++
       }
     }
   }

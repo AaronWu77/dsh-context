@@ -6,7 +6,7 @@ import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { gridOf, makeHeatmap, todayKey } from '../../../src/client/components/heatmap'
-import { click, makeKit, mount, query, queryAll, text } from '../helpers/kit'
+import { click, hover, makeKit, mount, query, queryAll, text, unhover } from '../helpers/kit'
 
 const kit = makeKit()
 const Heatmap = makeHeatmap(kit)
@@ -47,32 +47,33 @@ describe('Heatmap', () => {
   })
 
   test('a corrupt today key degrades to the empty note', async () => {
-    const m = await mount(h(Heatmap, { days: { '2026-09-16': { tokens: 5, requests: 1 } }, today: 'junk' }))
+    const m = await mount(h(Heatmap, { days: { '2026-09-16': { tokens: 5, requests: 1, sessions: 1 } }, today: 'junk' }))
     assert.ok(text(m.container).includes('No activity yet'))
     await m.unmount()
   })
 
   test('cells draw with depth levels; data days are buttons with labels', async () => {
     const days = {
-      '2026-09-16': { tokens: 100, requests: 4 },
-      '2026-09-15': { tokens: 50, requests: 2 },
-      '2026-09-14': { tokens: 25, requests: 1 },
-      '2026-09-09': { tokens: 75, requests: 3 },
-      '2026-09-08': { tokens: 1, requests: 1 },
-      '2026-09-07': { tokens: 0, requests: 2 },
+      '2026-09-16': { tokens: 100, requests: 4, sessions: 2 },
+      '2026-09-15': { tokens: 50, requests: 2, sessions: 1 },
+      '2026-09-14': { tokens: 25, requests: 1, sessions: 1 },
+      '2026-09-09': { tokens: 75, requests: 3, sessions: 3 },
+      '2026-09-08': { tokens: 1, requests: 1, sessions: 1 },
+      '2026-09-07': { tokens: 0, requests: 2, sessions: 1 },
     }
     const m = await mount(h(Heatmap, { days, today: TODAY, weeks: 2 }))
     const buttons = queryAll<HTMLButtonElement>(m.container, 'button.lc-heat-cell')
     // The zero-token day counts as activity (requests > 0) and draws level 0.
     assert.equal(buttons.length, 6)
-    const byKey = new Map(buttons.map(b => [b.getAttribute('aria-label')?.split(' ')[0], b]))
+    const byKey = new Map(buttons.map(b => [b.getAttribute('aria-label')?.split('\n')[0], b]))
     assert.ok(byKey.get('2026-09-16')?.className.includes('lc-heat-4'), 'the maximum day is deepest')
     assert.ok(byKey.get('2026-09-15')?.className.includes('lc-heat-2'))
     assert.ok(byKey.get('2026-09-14')?.className.includes('lc-heat-1'))
     assert.ok(byKey.get('2026-09-09')?.className.includes('lc-heat-3'))
     assert.ok(byKey.get('2026-09-08')?.className.includes('lc-heat-1'), 'a crumb is never invisible')
     assert.ok(byKey.get('2026-09-07')?.className.includes('lc-heat-0'))
-    assert.equal(byKey.get('2026-09-16')?.getAttribute('aria-label'), '2026-09-16 · 100 tokens · 4 requests')
+    // The tooltip is two lines: the date, then the day's active sessions.
+    assert.equal(byKey.get('2026-09-16')?.getAttribute('aria-label'), '2026-09-16\n2 active sessions')
     // Inert cells: data-less days and future days draw as plain spans.
     const spans = queryAll(m.container, 'span.lc-heat-cell')
     assert.ok(spans.length > 0)
@@ -83,11 +84,28 @@ describe('Heatmap', () => {
     await m.unmount()
   })
 
+  test('cells tip through the harness Tooltip: the bubble mounts on hover and drops on leave', async () => {
+    const m = await mount(h(Heatmap, {
+      days: { '2026-09-16': { tokens: 10, requests: 1, sessions: 3 } },
+      today: TODAY,
+      weeks: 2,
+    }))
+    const cell = query<HTMLButtonElement>(m.container, 'button.lc-heat-cell')
+    await hover(cell)
+    assert.equal(query(m.container, '[role="tooltip"]').textContent, '2026-09-16\n3 active sessions')
+    await unhover(cell)
+    assert.equal(queryAll(m.container, '[role="tooltip"]').length, 0, 'the bubble drops when the pointer leaves')
+    // An empty day tips too — the bare date, one line.
+    await hover(query(m.container, 'span.lc-heat-0'))
+    assert.match(query(m.container, '[role="tooltip"]').textContent ?? '', /^\d{4}-\d{2}-\d{2}$/)
+    await m.unmount()
+  })
+
   test('clicking a data day pins it; clicking again releases; the ring follows the selection', async () => {
     const picked: (string | null)[] = []
     const record = (day: string | null): void => { picked.push(day) }
     const m = await mount(h(Heatmap, {
-      days: { '2026-09-16': { tokens: 10, requests: 1 } },
+      days: { '2026-09-16': { tokens: 10, requests: 1, sessions: 1 } },
       today: TODAY,
       weeks: 2,
       selected: null,
@@ -97,7 +115,7 @@ describe('Heatmap', () => {
     await click(cell)
     assert.deepEqual(picked, ['2026-09-16'])
     await m.update(h(Heatmap, {
-      days: { '2026-09-16': { tokens: 10, requests: 1 } },
+      days: { '2026-09-16': { tokens: 10, requests: 1, sessions: 1 } },
       today: TODAY,
       weeks: 2,
       selected: '2026-09-16',
@@ -111,7 +129,7 @@ describe('Heatmap', () => {
   })
 
   test('without an onSelect relay the cells stay inert', async () => {
-    const m = await mount(h(Heatmap, { days: { '2026-09-16': { tokens: 10, requests: 1 } }, today: TODAY, weeks: 2 }))
+    const m = await mount(h(Heatmap, { days: { '2026-09-16': { tokens: 10, requests: 1, sessions: 1 } }, today: TODAY, weeks: 2 }))
     const cell = query<HTMLButtonElement>(m.container, 'button.lc-heat-cell')
     await click(cell)
     assert.ok(!cell.className.includes('lc-heat-on'))
