@@ -44,13 +44,17 @@
    full-width column and the whole card scrolls in normal flow (no capped
    inner scrollers to overlap). ---- */
 .lc-ov-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: 10px; }
-.lc-ov-left { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.lc-ov-right { min-height: 0; overflow-y: auto; }
+/* Each column owns its scrollbar (the harness 8px bar): `scrollbar-gutter:
+   stable` holds the bar's track so cards never reflow by its width when a
+   column gains or loses it, and the right padding keeps the thumb clear of
+   the card edges instead of riding on them. */
+.lc-ov-left { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
+.lc-ov-right { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; }
 @container lc-ov (max-width: 932px) {
   .lc-ov-card { overflow-y: auto; }
   .lc-ov-body { display: block; }
   .lc-ov-left { margin-bottom: 12px; }
-  .lc-ov-left, .lc-ov-right { overflow: visible; min-height: auto; }
+  .lc-ov-left, .lc-ov-right { overflow: visible; min-height: auto; padding-right: 0; }
   .lc-ov-heat-card { flex: none; }
 }
 /* border-box keeps the card tracks true outer widths: under the harness's
