@@ -1,7 +1,8 @@
 /**
  * The Context Dashboard's sidebar entry: a footer action stacked directly
  * above Settings (the harness's own foot layout: footer actions, then the
- * settings row). The button carries the plugin emblem and, on the wide
+ * settings row), mirroring the Settings trigger's geometry in both column
+ * widths. The button carries the plugin emblem and, on the wide
  * column, its label; a badge counts the sessions currently running (the one
  * glanceable live fact a footer can carry). Clicking opens the overview
  * overlay through the shared module store (overviewStore.ts).
@@ -28,12 +29,12 @@ export function makeOverviewButton(kit: ViewKit): (props: OverviewButtonProps) =
     return (
       <button
         type="button"
-        className="lc-ov-entry"
+        className={props.wide === true ? 'lc-ov-entry' : 'lc-ov-entry lc-ov-entry-rail'}
         title={t('ov.entry')}
         aria-label={t('ov.entry')}
         onClick={() => { overviewStore.set(true) }}
       >
-        <ContextIcon size={16} className="lc-ov-entry-icon" />
+        <ContextIcon size={props.wide === true ? 16 : 18} className="lc-ov-entry-icon" />
         {props.wide === true && <span className="lc-ov-entry-label">{t('ov.entry')}</span>}
         {running > 0 && <span className="lc-ov-badge" aria-hidden="true">{running}</span>}
       </button>

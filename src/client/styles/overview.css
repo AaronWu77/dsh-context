@@ -10,10 +10,13 @@
  */
 
 /* ---- the sidebar-foot entry ---- */
-.lc-ov-entry { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; cursor: pointer; transition: background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
-.lc-ov-entry:hover { background: var(--dsw-alias-bg-layer-2); }
-/* The wide column's label turns the centered rail icon into a left-aligned row. */
-.lc-ov-entry:has(.lc-ov-entry-label) { justify-content: flex-start; }
+/* Geometry mirrors the harness's own Settings trigger (ui-settings-general's
+   .trigger): the 42px row, 12px radius, 14px/22px label, and its shared hover
+   fill, so the plugin entry reads as a native foot control, not a visitor. */
+.lc-ov-entry { position: relative; display: flex; align-items: center; gap: 8px; width: calc(100% + 4px); height: 42px; box-sizing: border-box; margin: 0 -2px; border: 0; padding: 0 10px 0 8px; overflow: hidden; background: transparent; border-radius: 12px; color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 14px; line-height: 22px; cursor: pointer; }
+.lc-ov-entry:hover { background: var(--dsw-alias-interactive-bg-hover); }
+/* The collapsed rail takes the native foot controls' 36x36 circle, icon only. */
+.lc-ov-entry-rail { flex: none; justify-content: center; gap: 0; width: 36px; height: 36px; margin: 0; padding: 0; border-radius: 50%; }
 .lc-ov-entry-icon { flex: none; }
 .lc-ov-entry-label { flex: 1 1 auto; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The running-sessions badge: the footer's one live fact, pinned to the icon's corner in both column widths. */

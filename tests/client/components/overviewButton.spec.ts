@@ -24,16 +24,19 @@ describe('OverviewButton', () => {
     const wide = await mount(h(Button, { wide: true }))
     assert.equal(query(wide.container, '.lc-ov-entry-label').textContent, 'Context Insights')
     assert.equal(query(wide.container, 'button.lc-ov-entry').getAttribute('aria-label'), 'Context Insights')
+    assert.equal(queryAll(wide.container, '.lc-ov-entry-rail').length, 0)
     await wide.unmount()
 
     const rail = await mount(h(Button, { wide: false }))
     assert.equal(queryAll(rail.container, '.lc-ov-entry-label').length, 0)
     assert.ok(query(rail.container, '.lc-ov-entry-icon'))
+    assert.ok(query(rail.container, 'button.lc-ov-entry-rail'))
     await rail.unmount()
 
     // An absent wide flag (a foreign owner) keeps the label hidden.
     const bare = await mount(h(Button, {}))
     assert.equal(queryAll(bare.container, '.lc-ov-entry-label').length, 0)
+    assert.ok(query(bare.container, 'button.lc-ov-entry-rail'))
     await bare.unmount()
   })
 
