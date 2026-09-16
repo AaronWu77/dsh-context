@@ -392,8 +392,12 @@ export interface OverviewKpis {
   turns: number
   /** Estimated spend in the display currency (null: nothing priced). */
   cost: number | null
+  /** Sessions whose spend the book could price (the cost cell's sub-line). */
+  costSessions: number
   /** Cache-hit share of billed input, truncated (null: nothing billed). */
   cacheHit: string | null
+  /** Sessions whose usage feeds the cache-hit rate (the cache-hit cell's sub-line). */
+  usageSessions: number
   /** Their completed tool calls. */
   toolCalls: number
   /** Their summed tool-run time (the tool-calls cell's sub-line). */
@@ -417,7 +421,15 @@ export function kpisOf(
   let toolsMs = 0
   let calls = 0
   let wallMs = 0
+  let costSessions = 0
+  let usageSessions = 0
   for (const row of rows) {
+    const cost = row.timeline?.cost
+    // Each qualifying sub-line counts the sessions its own figure covers: a
+    // session with usage but no book rates feeds the cache-hit rate while
+    // pricing to nothing.
+    if (estimateSessionCost(cost, prices, currency) !== null) costSessions++
+    if (usageTotalsOf(cost) !== null) usageSessions++
     turns += turnsOf(row.timeline)
     const timing = row.timeline?.timing
     toolCalls += timing?.toolCalls ?? 0
@@ -431,7 +443,9 @@ export function kpisOf(
     tokens: totals?.total ?? 0,
     turns,
     cost: estimateSessionCost(usage, prices, currency),
+    costSessions,
     cacheHit: totals === null ? null : cacheHitPercent(totals.cacheRead, totals.input + totals.cacheRead + totals.cacheWrite),
+    usageSessions,
     toolCalls,
     toolsMs,
     calls,

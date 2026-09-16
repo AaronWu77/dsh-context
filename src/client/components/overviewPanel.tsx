@@ -150,12 +150,12 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('stats.cost')}</span>
                     <span className="lc-stat-value">{kpi.cost === null ? '—' : formatCost(kpi.cost, currency)}</span>
-                    <span className="lc-stat-sub">{t('ov.kpi.sessionsSub', { n: kpi.sessions })}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.sessionsSub', { n: kpi.costSessions })}</span>
                   </div>
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('stats.cacheHit')}</span>
                     <span className="lc-stat-value">{kpi.cacheHit === null ? '—' : kpi.cacheHit + '%'}</span>
-                    <span className="lc-stat-sub">{t('ov.kpi.sessionsSub', { n: kpi.sessions })}</span>
+                    <span className="lc-stat-sub">{t('ov.kpi.sessionsSub', { n: kpi.usageSessions })}</span>
                   </div>
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('stats.toolCalls')}</span>

@@ -139,9 +139,10 @@ describe('OverviewPanel', () => {
     assert.equal(values[5], '3m0s')
     assert.ok(text(m.container).includes('tool runs 40.0s'), 'the tool calls cell qualifies with the summed run time')
     assert.ok(text(m.container).includes('8 model calls'), 'the active-time cell qualifies with the model-call count')
-    // Cost and cache hit qualify with the session count they aggregate over.
+    // Cost and cache hit qualify with the session count each figure covers
+    // (only session a carries usage; b folds no cost at all).
     const subs = queryAll(m.container, '.lc-stat-sub').map(el => el.textContent)
-    assert.deepEqual(subs.slice(2, 4), ['across 2 sessions', 'across 2 sessions'])
+    assert.deepEqual(subs.slice(2, 4), ['across 1 sessions', 'across 1 sessions'])
     // Heatmap drew cells for the two ledger days.
     assert.ok(queryAll(m.container, 'button.lc-heat-cell').length >= 2)
     // Cards: a (current, running, grouped), b, and c is outside the 30d range.
