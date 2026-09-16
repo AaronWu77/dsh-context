@@ -179,6 +179,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                 <div className="lc-card lc-ov-comp-card">
                   <div className="lc-card-title">
                     <span className="lc-card-title-text">{t('ov.comp.title')}</span>
+                    <span className="lc-card-sub">{t('ov.comp.unit')}</span>
                   </div>
                   {composition === null ? (
                     <div className="lc-empty">{t('ov.comp.empty')}</div>
@@ -187,7 +188,6 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                       <Donut
                         segments={partsOf(composition)}
                         centerTop={fmt(composition.total)}
-                        centerSub={t('overview.estimate')}
                         hoverKey={hoverCat}
                         onHoverKey={setHoverCat}
                       />
