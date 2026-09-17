@@ -65,6 +65,9 @@ export default defineConfig({
       ],
       thresholds: { perFile: true, statements: 100, branches: 100, functions: 100, lines: 100 },
       reporter: ['text', 'html'],
+      // The text table lists only files below 100%; an empty table means full
+      // coverage (thresholds still fail the run when anything is short).
+      skipFull: true,
       reportsDirectory: './coverage',
     },
   },
