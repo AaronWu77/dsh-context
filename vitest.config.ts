@@ -10,6 +10,7 @@ import { defineConfig } from 'vitest/config'
 // and stateless — vitest forks them across workers in parallel.
 export default defineConfig({
   test: {
+    reporters: ['dot'],
     projects: [
       {
         test: {
