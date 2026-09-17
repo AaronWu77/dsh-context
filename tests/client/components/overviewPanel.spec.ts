@@ -5,7 +5,7 @@
 
 import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
-import { afterEach, beforeEach, describe, test } from 'vitest'
+import { afterEach, beforeEach, describe, test, vi } from 'vitest'
 import { makeOverviewPanel } from '../../../src/client/components/overviewPanel'
 import { resetModelPrices, setModelPricesLoader } from '../../../src/client/modelPrices'
 import { overviewStore } from '../../../src/client/overviewStore'
@@ -108,23 +108,33 @@ async function openPanel(
   return { m, Panel }
 }
 
+/** The fetch calls the panel fired (the warm-up trigger POST), per test. */
+const backfillPosts: string[] = []
+
 beforeEach(() => {
   resetModelPrices()
   setModelPricesLoader(() => Promise.resolve(PROVIDERS))
+  backfillPosts.length = 0
+  vi.stubGlobal('fetch', async (url: string | URL) => {
+    backfillPosts.push(String(url))
+    return { ok: true, json: async () => ({}) }
+  })
 })
 
 afterEach(async () => {
   overviewStore.set(false)
   resetModelPrices()
+  vi.unstubAllGlobals()
   await new Promise(resolve => setTimeout(resolve, 1))
 })
 
 describe('OverviewPanel', () => {
-  test('renders the KPI band, heatmap, and session cards; refreshes the list on open', async () => {
+  test('renders the KPI band, heatmap, and session cards; summons the warm-up and refreshes the list on open', async () => {
     let pulls = 0
     const ctx = makeCtx({ refresh: () => { pulls++; return Promise.resolve() } })
     const { m } = await openPanel(ctx)
     assert.equal(pulls, 1, 'the baseline re-pull fires on open')
+    assert.deepEqual(backfillPosts, ['/api/dsh-context/backfill'], 'the warm-up trigger POST fires on open')
     assert.ok(text(m.container).includes('Context Insights'))
     // KPI band: 2 sessions in the 30d range, 1750 tokens billed, priced cost, cache hit.
     const labels = queryAll(m.container, '.lc-stat-label').map(el => el.textContent)

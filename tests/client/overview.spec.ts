@@ -3,7 +3,7 @@
 // session-open verb — every guard branch with hostile fixtures.
 
 import assert from 'node:assert/strict'
-import { describe, test } from 'vitest'
+import { describe, test, vi } from 'vitest'
 import {
   aggregateDays,
   billedOf,
@@ -18,6 +18,7 @@ import {
   rangeStartOf,
   refreshSessions,
   relativeTime,
+  requestActivityBackfill,
   rowsOfSnapshot,
   sessionGroupsOf,
   sessionsSnapshotOf,
@@ -512,6 +513,24 @@ describe('refreshSessions', () => {
     refreshSessions(ctxWith({}))
     refreshSessions(ctxWith({ sessions: { refresh: () => { throw new Error('boom') } } }))
     refreshSessions({ get: () => { throw new Error('boom') } } as unknown as ClientCtx)
+    await new Promise(resolve => setTimeout(resolve, 5))
+  })
+})
+
+describe('requestActivityBackfill', () => {
+  test('POSTs the warm-up trigger route once per call; rejections and hostility swallow', async () => {
+    const calls: [string, RequestInit | undefined][] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      calls.push([String(url), init])
+      return { ok: true }
+    })
+    requestActivityBackfill()
+    assert.deepEqual(calls, [['/api/dsh-context/backfill', { method: 'POST' }]])
+    vi.stubGlobal('fetch', async () => Promise.reject(new Error('route absent')))
+    requestActivityBackfill()
+    vi.stubGlobal('fetch', () => { throw new Error('hostile transport') })
+    requestActivityBackfill()
+    vi.unstubAllGlobals()
     await new Promise(resolve => setTimeout(resolve, 5))
   })
 })

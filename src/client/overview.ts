@@ -500,6 +500,25 @@ export function refreshSessions(ctx: ClientCtx): void {
   } catch { /* hostile service — no refresh */ }
 }
 
+// The plugin's warm-up trigger route (host/backfill.ts) — re-declared here:
+// the client bundle inlines every import, and the host module must never
+// reach it. Same-origin POST under the harness's authenticated `/api` fence.
+const BACKFILL_ROUTE = '/api/dsh-context/backfill'
+
+/**
+ * Summon the host's projection warm-up (host/backfill.ts): the dashboard is
+ * the rows' only reader, so the host defers the corpus-wide cold reads until
+ * this surface first opens (one pass per host process — later opens no-op
+ * server-side, and the host answers at once). Fire-and-forget: an older host
+ * without the route, or a transport hiccup, just leaves the panel on the
+ * rows it already has.
+ */
+export function requestActivityBackfill(): void {
+  try {
+    void fetch(BACKFILL_ROUTE, { method: 'POST' }).catch(() => { /* the rows arrive on a later open */ })
+  } catch { /* hostile transport — the panel keeps its rows */ }
+}
+
 /**
  * The row's relative-activity label ("3m ago"), unit-stepped: under a
  * minute reads "just now", then minutes, hours, days. A future or invalid
