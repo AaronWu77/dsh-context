@@ -19,7 +19,6 @@ import {
   refreshSessions,
   relativeTime,
   rowsOfSnapshot,
-  runningCountOf,
   sessionGroupsOf,
   sessionsSnapshotOf,
   sortRows,
@@ -86,20 +85,6 @@ describe('sessionsSnapshotOf', () => {
   test('the raw snapshot passes through', () => {
     const snap = { ids: [] }
     assert.equal(sessionsSnapshotOf({ useSessions: (sel: (s: unknown) => unknown) => sel(snap) }), snap)
-  })
-})
-
-describe('runningCountOf', () => {
-  test('unusable snapshots tally zero', () => {
-    assert.equal(runningCountOf(null), 0)
-    assert.equal(runningCountOf(7), 0)
-    assert.equal(runningCountOf({ byId: 7 }), 0)
-  })
-
-  test('running rows tally; a hostile row stops the count at what was seen', () => {
-    const hostile = new Proxy({}, { get: () => { throw new Error('boom') } })
-    assert.equal(runningCountOf({ byId: { a: { running: true }, b: { running: false }, c: { running: true } } }), 2)
-    assert.equal(runningCountOf({ byId: { a: { running: true }, x: hostile } }), 1)
   })
 })
 

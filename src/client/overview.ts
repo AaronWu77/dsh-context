@@ -56,24 +56,6 @@ export function sessionsSnapshotOf(props: { useSessions?: unknown }): unknown {
   }
 }
 
-/** The running-session tally for the footer entry's badge (0 on any shape failure). */
-export function runningCountOf(snapshot: unknown): number {
-  const state = asRecord(snapshot)
-  if (state === null) return 0
-  const byId = asRecord(state.byId)
-  if (byId === null) return 0
-  let count = 0
-  try {
-    for (const id of Object.keys(byId)) {
-      const row = asRecord(byId[id])
-      if (row !== null && row.running === true) count++
-    }
-  } catch {
-    // A hostile row throwing on access stops the tally at what was counted.
-  }
-  return count
-}
-
 /**
  * The `useWorkspaces` standard prop read — same guarded-hook contract as
  * {@link sessionsSnapshotOf}. The overview joins its session → workspace
