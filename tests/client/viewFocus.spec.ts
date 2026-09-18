@@ -1,9 +1,11 @@
-// viewFocus (src/client/viewFocus.ts) — the chat→Context jump relay and the
-// Context-tab activation, driven against a real jsdom tab bar.
+// viewFocus (src/client/viewFocus.ts) — the chat→Context jump relay, the
+// sidebar-tab opener, and the conversation-tab activation, driven against a
+// real jsdom tab bar.
 
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { activateContextTab, requestContextFocus, takeContextFocus } from '../../src/client/viewFocus'
+import { activateContextTab, openContextSidebar, requestContextFocus, takeContextFocus } from '../../src/client/viewFocus'
+import { asClientCtx, TestClientCtx } from './helpers/harness'
 
 describe('context focus relay', () => {
   test('one request survives until taken, then the map entry is consumed', () => {
@@ -19,6 +21,33 @@ describe('context focus relay', () => {
     requestContextFocus('sv-other', 1)
     assert.equal(takeContextFocus('sv-other'), 1)
     assert.equal(takeContextFocus('sv-unknown'), null)
+  })
+})
+
+describe('openContextSidebar', () => {
+  test('opens the registered kind through the sidebarRight face', () => {
+    const opened: string[] = []
+    const ctx = new TestClientCtx({ services: { sidebarRight: { openTab: (kind: string) => { opened.push(kind) } } } })
+    assert.equal(openContextSidebar(asClientCtx(ctx)), true)
+    assert.deepEqual(opened, ['dsh-context'])
+  })
+
+  test('no service, or a face without the verb, reports false', () => {
+    assert.equal(openContextSidebar(asClientCtx(new TestClientCtx())), false)
+    assert.equal(openContextSidebar(asClientCtx(new TestClientCtx({ services: { sidebarRight: {} } }))), false)
+    assert.equal(openContextSidebar(asClientCtx(new TestClientCtx({ services: { sidebarRight: null } }))), false)
+    assert.equal(openContextSidebar(asClientCtx(new TestClientCtx({ services: { sidebarRight: 'x' } }))), false)
+  })
+
+  test('a hostile face — throwing read or openTab — reports false, never throws', () => {
+    const throwingRead = {
+      get(_name: string): unknown { throw new Error('boom') },
+    } as unknown as TestClientCtx
+    assert.equal(openContextSidebar(asClientCtx(throwingRead)), false)
+    const ctx = new TestClientCtx({ services: {
+      sidebarRight: { openTab: () => { throw new Error('no session surface mounted') } },
+    } })
+    assert.equal(openContextSidebar(asClientCtx(ctx)), false)
   })
 })
 

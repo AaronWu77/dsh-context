@@ -1,19 +1,20 @@
 /**
- * The assistant-message action that jumps to the Context tab at this reply's
+ * The assistant-message action that opens the Context view at this reply's
  * turn. Registered on the harness `conversation.chat.assistant-actions` seat
  * (the icon row beside copy/branch), it receives the finalized reply's durable
  * message id, resolves the matching assistant node's seq off the `useChat`
- * node seat, records it in the viewFocus relay, and activates the Context
- * tab — where the jump pins the reply's TURN (see contextView's leg 2). An
- * unresolvable seq still switches tabs, just without a pin; a message id that
- * is not a plain string renders nothing at all.
+ * node seat, records it in the viewFocus relay, and opens the Context tab on
+ * the right Sidebar — where the jump pins the reply's TURN (see contextView's
+ * leg 2). A harness or placement without the sidebar tab falls back to the
+ * conversation tab; an unresolvable seq still opens the view, just without a
+ * pin; a message id that is not a plain string renders nothing at all.
  */
 
 import { type ReactElement } from 'react'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ConversationNodeLike, UseChatLike } from '../services'
+import type { ClientCtx, ConversationNodeLike, UseChatLike } from '../services'
 import { conversationNodesOf } from '../services'
-import { activateContextTab, requestContextFocus } from '../viewFocus'
+import { activateContextTab, openContextSidebar, requestContextFocus } from '../viewFocus'
 import type { ViewKit } from '../viewkit'
 
 /** The assistant-action seat's currency, as far as this button consumes it. */
@@ -50,7 +51,7 @@ function JumpIcon(): ReactElement {
   )
 }
 
-export function makeContextJumpButton(kit: ViewKit): (props: ContextJumpProps) => ReactElement | null {
+export function makeContextJumpButton(ctx: ClientCtx, kit: ViewKit): (props: ContextJumpProps) => ReactElement | null {
   const { t } = kit
   return function ContextJump(props: ContextJumpProps): ReactElement | null {
     const messageId = props.messageId
@@ -63,7 +64,9 @@ export function makeContextJumpButton(kit: ViewKit): (props: ContextJumpProps) =
       if (seq !== null && typeof sessionId === 'string' && sessionId !== '') {
         requestContextFocus(sessionId, seq)
       }
-      activateContextTab(t('tab'))
+      // The sidebar expands over the chat, keeping the clicked reply in view;
+      // a harness or placement without that tab keeps the tab activation.
+      if (!openContextSidebar(ctx)) activateContextTab(t('tab'))
     }
     return (
       <Tooltip label={t('jump.title')} side="bottom">
