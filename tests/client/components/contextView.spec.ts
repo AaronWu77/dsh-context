@@ -1188,6 +1188,17 @@ describe('ContextView — chat→Context jump', () => {
     await m.unmount()
   })
 
+  test('a record landing after mount re-pins the mounted view (the sidebar repeat jump)', async () => {
+    const m = await mountRich('sv-rejump')
+    assert.ok(!query(m.container, '.lc-bar[data-seq="4"]').className.includes('lc-bar-selected'), 'nothing pinned at mount')
+    // The sidebar landing keeps this view mounted; a later jump must re-pin it.
+    await act(async () => { requestContextFocus('sv-rejump', 4) })
+    assert.ok(query(m.container, '.lc-bar[data-seq="4"]').className.includes('lc-bar-selected'), 'the later record re-pins')
+    assert.equal(query<HTMLSelectElement>(m.container, 'select.lc-br-pick').value, '4')
+    assert.equal(takeContextFocus('sv-rejump'), null, 'the record was consumed')
+    await m.unmount()
+  })
+
   test('the jump resets the shared scroller even when a saved position was about to be restored', async () => {
     const View = makeView(new TestClientCtx())
     const props = { sessionId: 'sv-jumpscroll', useProjection: projectionsFor(richTimeline()) }

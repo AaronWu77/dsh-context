@@ -3,11 +3,14 @@
  * turn. Registered on the harness `conversation.chat.assistant-actions` seat
  * (the icon row beside copy/branch), it receives the finalized reply's durable
  * message id, resolves the matching assistant node's seq off the `useChat`
- * node seat, records it in the viewFocus relay, and opens the Context tab on
- * the right Sidebar — where the jump pins the reply's TURN (see contextView's
- * leg 2). A harness or placement without the sidebar tab falls back to the
- * conversation tab; an unresolvable seq still opens the view, just without a
- * pin; a message id that is not a plain string renders nothing at all.
+ * node seat AT RENDER TIME (the seat is a real React hook — render-only; a
+ * click-time read throws the dispatcher guard and the jump would land
+ * unpinned), records it in the viewFocus relay on click, and opens the
+ * Context tab on the right Sidebar — where the jump pins the reply's TURN
+ * (see contextView's leg 2). A harness or placement without the sidebar tab
+ * falls back to the conversation tab; an unresolvable seq still opens the
+ * view, just without a pin; a message id that is not a plain string renders
+ * nothing at all.
  */
 
 import { type ReactElement } from 'react'
@@ -54,12 +57,15 @@ function JumpIcon(): ReactElement {
 export function makeContextJumpButton(ctx: ClientCtx, kit: ViewKit): (props: ContextJumpProps) => ReactElement | null {
   const { t } = kit
   return function ContextJump(props: ContextJumpProps): ReactElement | null {
+    // The seat is read HERE — unconditionally and first, so the early return
+    // below keeps hook order — and the click consumes the captured pair.
+    const nodes = conversationNodesOf(props)
     const messageId = props.messageId
     // Interruption-frozen partials address no durable message — the owner
     // already withholds them, and anything else non-string is ignored.
     if (typeof messageId !== 'string' || messageId === '') return null
+    const seq = seqOfMessageId(nodes, messageId)
     const jump = (): void => {
-      const seq = seqOfMessageId(conversationNodesOf(props), messageId)
       const sessionId = props.sessionId
       if (seq !== null && typeof sessionId === 'string' && sessionId !== '') {
         requestContextFocus(sessionId, seq)

@@ -82,6 +82,20 @@ describe('ContextJump — click flow', () => {
     }
   })
 
+  test('the seq resolves at render and the click never re-reads the seat (a real hook is render-only)', async () => {
+    let reads = 0
+    const useChat = ((sel: (s: unknown) => unknown) => {
+      reads++
+      return sel({ legacy: { nodes: [reply] as readonly ConversationNodeLike[] } })
+    }) as UseChatLike
+    const m = await mount(h(Jump, { messageId: 'msg-4', sessionId: SESSION, useChat }))
+    const before = reads
+    await click(query(m.container, 'button.lc-jump'))
+    assert.equal(reads, before, 'no click-time seat read — the production seat throws off-render')
+    assert.equal(takeContextFocus(SESSION), 4, 'the render-resolved seq rides the relay')
+    await m.unmount()
+  })
+
   test('the seq resolution prefers the matching assistant node and drops non-finite seqs', async () => {
     const m = await mount(h(Jump, { messageId: 'msg-tool', sessionId: SESSION, ...chatWith([reply, toolNode]) }))
     await click(query(m.container, 'button.lc-jump'))

@@ -11,9 +11,27 @@ import { SIDEBAR_CONTEXT_KIND } from './sidebar'
 
 const pendingFocus = new Map<string, number>()
 
-/** Record the Context step (request seq) to reveal for `sessionId` — replaces any unconsumed request. */
+/** The mounted Context views re-pinning on later records (repeat jumps). */
+const focusListeners = new Set<() => void>()
+
+/**
+ * Record the Context step (request seq) to reveal for `sessionId` — replaces
+ * any unconsumed request and wakes the mounted views.
+ */
 export function requestContextFocus(sessionId: string, seq: number): void {
   pendingFocus.set(sessionId, seq)
+  for (const listener of focusListeners) listener()
+}
+
+/**
+ * Wake on every record while subscribed: a Context view that is already
+ * mounted (the sidebar landing keeps it mounted across jumps) re-pins when a
+ * record lands — the listener takes its OWN session's entry, so other
+ * sessions' records leave their entries pending for their views.
+ */
+export function subscribeContextFocus(listener: () => void): () => void {
+  focusListeners.add(listener)
+  return () => { focusListeners.delete(listener) }
 }
 
 /** Take the pending focus request, if any — one-shot, the map entry is consumed. */

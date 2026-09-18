@@ -36,7 +36,7 @@ import { makeStatsTokens } from './statsTokens'
 import { makeLegend, makeStackedBar } from './stackedBar'
 import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
 
-import { takeContextFocus } from '../viewFocus'
+import { subscribeContextFocus, takeContextFocus } from '../viewFocus'
 import { makeErrorBoundary } from './errorBoundary'
 
 // The context page scrolls inside the conversation's shared `[data-conversation-scroll]` container, which the chat bottom-anchors — mirror
@@ -220,11 +220,17 @@ export function makeContextView(
     const stepsOf = useMemo(() => turnStepsOf(requests), [requests])
     const markers = useMemo(() => attachMarkers(displayRequests, events), [displayRequests, events])
 
-    // Chat → Context jump, leg 1: pick up the assistant-action relay's request for this session (once per mount).
+    // Chat → Context jump, leg 1: pick up the assistant-action relay's request for this session —
+    // once per mount, and again on every later record (the sidebar landing keeps this view mounted
+    // while the user jumps between replies).
     useEffect(() => {
       if (typeof sessionId !== 'string' || sessionId === '') return
-      const seq = takeContextFocus(sessionId)
-      if (seq !== null) setJumpSeq(seq)
+      const take = (): void => {
+        const seq = takeContextFocus(sessionId)
+        if (seq !== null) setJumpSeq(seq)
+      }
+      take()
+      return subscribeContextFocus(take)
     }, [sessionId])
 
     // Leg 2: the action row belongs to the reply that CLOSED a turn, so the jump is turn-level — flip the chart to turn bars, pin that
