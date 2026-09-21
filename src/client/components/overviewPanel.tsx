@@ -18,6 +18,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactElement }
 import { estimateSessionCost, formatCost, type CostCurrency, type ModelPrices } from '../cost'
 import { fmt } from '../format'
 import { useModelPrices } from '../modelPrices'
+import { balanceEntryOf, fetchPlatformBalance } from '../balance'
+import type { PlatformBalance } from '../../shared/types'
 import {
   aggregateDays, filterRows, groupCountsOf, inGroup, kpisOf, openSession,
   pageOf, refreshSessions, requestActivityBackfill, rowsOfSnapshot,
@@ -51,6 +53,84 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
   const OverviewCard = makeOverviewCard(kit)
   const BalanceCapsule = makeBalanceCapsule(ctx, kit)
   const ErrorBoundary = makeErrorBoundary(t)
+
+  /** One Codex rate-limit window as dsh-codex-connect publishes it. */
+  interface CodexWindow { usedPercent?: number; resetsAt?: string; windowMinutes?: number }
+  /** The optional cross-plugin quota service (absent when that plugin is not mounted). */
+  interface CodexQuota { fetchedAt?: number; fiveHour?: CodexWindow; weekly?: CodexWindow }
+
+  /** Read the optional codexQuota client service without requiring it. */
+  function codexQuotaOf(): CodexQuota | null {
+    const probe = ctx as unknown as { get?: (name: string) => unknown }
+    if (typeof probe.get !== 'function') return null
+    const value = probe.get('codexQuota')
+    return value !== null && typeof value === 'object' ? (value as CodexQuota) : null
+  }
+
+  /** Currency symbol for the balance cells the platform serves. */
+  function symbolOf(currency: string): string {
+    if (currency === 'CNY') return String.fromCharCode(0x00a5)
+    if (currency === 'USD') return String.fromCharCode(0x0024)
+    return currency + ' '
+  }
+
+  /** Remaining time until one window resets, or null when unknown. */
+  function resetInOf(win: CodexWindow): string | null {
+    if (win.resetsAt === undefined) return null
+    const at = Date.parse(win.resetsAt)
+    if (!Number.isFinite(at)) return null
+    const left = at - Date.now()
+    return left > 0 ? fmtDuration(left) : null
+  }
+
+  /**
+   * The account and quota grid above the KPI band: the platform balance, both
+   * Codex windows, and the tokens recorded for today. A cell whose figure is
+   * absent renders nothing rather than a placeholder.
+   */
+  function QuotaGrid({ days, currency }: { days: Record<string, { tokens: number }>; currency: CostCurrency }): ReactElement | null {
+    const [balance, setBalance] = useState<PlatformBalance | null>(null)
+    useEffect(() => {
+      let on = true
+      void fetchPlatformBalance().then((value) => { if (on) setBalance(value) })
+      return () => { on = false }
+    }, [])
+    const entry = balanceEntryOf(balance, currency)
+    const quota = codexQuotaOf()
+    const today = days[todayKey()]
+    const cells: ReactElement[] = []
+    if (entry !== null) {
+      cells.push(
+        <div className="lc-ov-quota-cell" key="balance">
+          <span className="lc-ov-quota-label">{t('ov.quota.balance')}</span>
+          <span className="lc-ov-quota-value">{symbolOf(entry.currency) + entry.total.toFixed(2)}</span>
+          <span className="lc-ov-quota-sub">{t('ov.quota.balanceSub', { granted: entry.granted.toFixed(2), topped: entry.toppedUp.toFixed(2) })}</span>
+        </div>,
+      )
+    }
+    const windows = [['5h', 'ov.quota.codex5h', quota?.fiveHour], ['week', 'ov.quota.codexWeek', quota?.weekly]] as const
+    for (const [key, label, win] of windows) {
+      if (win === undefined) continue
+      const reset = resetInOf(win)
+      cells.push(
+        <div className="lc-ov-quota-cell" key={key}>
+          <span className="lc-ov-quota-label">{t(label)}</span>
+          <span className="lc-ov-quota-value">{win.usedPercent === undefined ? '?' : Math.round(win.usedPercent) + '%'}</span>
+          {reset !== null && <span className="lc-ov-quota-sub">{t('ov.quota.resetIn', { d: reset })}</span>}
+        </div>,
+      )
+    }
+    if (today !== undefined && today.tokens > 0) {
+      cells.push(
+        <div className="lc-ov-quota-cell" key="today">
+          <span className="lc-ov-quota-label">{t('ov.quota.today')}</span>
+          <span className="lc-ov-quota-value">{fmt(today.tokens)}</span>
+          <span className="lc-ov-quota-sub">{t('ov.kpi.tokens')}</span>
+        </div>,
+      )
+    }
+    return cells.length === 0 ? null : <div className="lc-ov-quota">{cells}</div>
+  }
 
   /** The display currency follows the active locale (zh → CNY), read per render — the slot outlet re-renders on a locale switch. */
   function activeCurrency(): CostCurrency {
@@ -146,6 +226,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
           ) : (
             <div className="lc-ov-body">
               <div className="lc-ov-left">
+                <QuotaGrid days={days} currency={currency} />
                 <div className="lc-ov-kpis">
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('ov.kpi.sessions')}</span>

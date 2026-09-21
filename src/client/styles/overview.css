@@ -26,12 +26,12 @@
 /* The backdrop carries the `lc-ov` container: it spans the viewport exactly,
    so queries against it track the card's own sizing basis (the card is
    min(1120px, 100vw - 32px)) without making the card unable to query itself. */
-.lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); display: flex; align-items: center; justify-content: center; container: lc-ov / inline-size; }
+.lc-ov-backdrop { position: fixed; inset: 0; z-index: 200; background: transparent; display: flex; align-items: flex-end; justify-content: flex-start; padding: 0 0 64px 12px; box-sizing: border-box; container: lc-ov / inline-size; }
 /* The card is a flex column capped at its max-height: the body fills the
    rest and each column scrolls its own overflow, so browsing sessions never
    scrolls the insight column out of view. On the folded width the card
    scrolls whole (see the container query at the body). */
-.lc-ov-card { display: flex; flex-direction: column; width: min(1120px, calc(100vw - 32px)); max-height: min(86vh, 900px); overflow: hidden; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; }
+.lc-ov-card { display: flex; flex-direction: column; width: min(720px, calc(100vw - 96px)); max-height: min(76vh, 840px); overflow: hidden; box-sizing: border-box; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; box-shadow: var(--dsw-shadow-lv3, 0 12px 32px rgba(0, 0, 0, 0.4)); padding: 16px 18px 18px; color: var(--dsw-alias-label-primary); font-size: 13px; }
 .lc-ov-head { flex: none; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .lc-ov-head-icon { flex: none; }
 .lc-ov-title { font-weight: 600; font-size: 15px; white-space: nowrap; }
@@ -169,3 +169,10 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 .lc-ov-pager-btn:hover:enabled { border-color: var(--dsw-alias-label-secondary); }
 .lc-ov-pager-btn:disabled { opacity: 0.4; cursor: default; }
 .lc-ov-pager-n { color: var(--dsw-alias-label-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The account and quota grid above the KPI band (2x2). */
+.lc-ov-quota { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lc-ov-quota-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-2); }
+.lc-ov-quota-label { color: var(--dsw-alias-label-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-ov-quota-value { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-ov-quota-sub { color: var(--dsw-alias-label-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
