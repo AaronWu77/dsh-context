@@ -73,14 +73,14 @@ describe('Heatmap', () => {
     assert.ok(byKey.get('2026-09-08')?.className.includes('lc-heat-1'), 'a crumb is never invisible')
     assert.ok(byKey.get('2026-09-07')?.className.includes('lc-heat-0'))
     // The tooltip is two lines: the date, then the day's active sessions.
-    assert.equal(byKey.get('2026-09-16')?.getAttribute('aria-label'), '2026-09-16\n2 active sessions')
+    assert.equal(byKey.get('2026-09-16')?.getAttribute('aria-label'), '2026-09-16\n100 Tokens Used · 2 active sessions')
     // Inert cells: data-less days and future days draw as plain spans.
     const spans = queryAll(m.container, 'span.lc-heat-cell')
     assert.ok(spans.length > 0)
     assert.ok(spans.some(s => s.className.includes('lc-heat-future')), 'future placeholders present')
-    // Weekday labels: Mon/Wed/Fri rows carry letters, the rest blank.
+    // Weekday labels: the Mon/Wed/Fri COLUMNS carry letters, the rest blank.
     const wds = queryAll(m.container, '.lc-heat-wd')
-    assert.deepEqual(wds.map(w => w.textContent), ['', 'M', '', 'W', '', 'F', ''])
+    assert.deepEqual(wds.map(w => w.textContent), ['M', '', 'W', '', 'F', '', ''])
     await m.unmount()
   })
 
@@ -110,7 +110,7 @@ describe('Heatmap', () => {
     }))
     const cell = query<HTMLButtonElement>(m.container, 'button.lc-heat-cell')
     await hover(cell)
-    assert.equal(query(m.container, '[role="tooltip"]').textContent, '2026-09-16\n3 active sessions')
+    assert.equal(query(m.container, '[role="tooltip"]').textContent, '2026-09-16\n10 Tokens Used · 3 active sessions')
     await unhover(cell)
     assert.equal(queryAll(m.container, '[role="tooltip"]').length, 0, 'the bubble drops when the pointer leaves')
     // An empty day tips too — the bare date, one line.

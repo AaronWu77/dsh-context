@@ -8,7 +8,6 @@
  * lives.
  */
 import { useMemo, useSyncExternalStore, type ReactElement } from 'react'
-import { IconGaugeOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ContextIcon } from '../icon'
 import { overviewStore } from '../overviewStore'
 import { aggregateDays, rowsOfSnapshot, sessionsSnapshotOf } from '../overview'
@@ -69,7 +68,7 @@ export function makeOverviewButton(
           aria-label={t('ov.entry')}
           onClick={open}
         >
-          <IconGaugeOutline16 size={18} className="lc-ov-entry-icon" />
+          <ContextIcon size={18} className="lc-ov-entry-icon" />
         </button>
       )
     }
@@ -89,7 +88,7 @@ export function makeOverviewButton(
         }}
       >
         <div className="lc-ov-widget-head">
-          <IconGaugeOutline16 size={14} className="lc-ov-entry-icon" />
+          <ContextIcon size={14} className="lc-ov-entry-icon" />
           <span className="lc-ov-widget-title">{t('ov.entry')}</span>
           <span className="lc-ov-widget-more" aria-hidden="true">{String.fromCharCode(0x203a)}</span>
         </div>

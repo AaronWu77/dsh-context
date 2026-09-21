@@ -1,30 +1,21 @@
 /**
- * The Context emblem: the colourful document sheet, bundled rather than read
- * off the harness primitives so the plugin's identity is self-contained.
+ * The Quota & Usage emblem: the harness gauge dial. Every seat the plugin
+ * owns renders THIS component — the right-Sidebar guide capsule, the tab
+ * chip title, the `/context` command row, the sidebar-foot entry and its
+ * wide widget, and the dashboard header — so one glyph means the plugin
+ * everywhere.
  *
- * It fills the right-Sidebar tab type's two glyph seats, exactly as the shipped
- * files type fills its own: the guide capsule before the tab is open
- * (`SidebarGuideEntry.icon`) and the chip title beside the label once it is
- * (`sidebar.right.pane.tab.title`). Fixed fills, never `currentColor` — the
- * sheet is deliberately polychrome on both light and dark chrome.
+ * The dial geometry matches the harness `IconGaugeOutline16` artwork and is
+ * vendored rather than imported: the plugin's type dependency on
+ * `@deepseek-ai/dsh-client-ui-primitives` predates that export (while the
+ * running shell already ships it), so an import would fail this package's
+ * own typecheck. Strokes use `currentColor`, so the glyph follows whichever
+ * theme and chip seat places it, and it is decorative (`aria-hidden`): the
+ * label beside it carries the accessible name.
  */
 
 import type { ReactElement } from 'react'
 import type { Translate } from './i18n'
-
-/** The sheet's strokes, in paint order, as `[path, fill]` pairs. */
-const SHEET_PATHS: ReadonlyArray<readonly [string, string]> = [
-  ['M899.984 19.873h-3.452c-26.123 0-47.296 21.172-47.296 47.296v888.508c0 26.127 21.173 47.298 47.296 47.298h3.452c26.119 0 47.297-21.171 47.297-47.298V67.169c0-26.124-21.177-47.296-47.297-47.296z', '#4A5699'],
-  ['M132.643 19.873h-3.449c-26.12 0-47.296 21.172-47.296 47.296v888.508c0 26.127 21.177 47.298 47.296 47.298h3.449c26.123 0 47.299-21.171 47.299-47.298V67.169c0-26.124-21.176-47.296-47.299-47.296z', '#C45FA0'],
-  ['M899.463 19.873H129.194c-26.12 0-47.296 21.172-47.296 47.296v3.377c0 26.12 21.177 47.299 47.296 47.299h770.269c26.123 0 47.296-21.179 47.296-47.299v-3.377c0-26.124-21.173-47.296-47.296-47.296z', '#6277BA'],
-  ['M899.463 905.006H129.194c-26.12 0-47.296 21.17-47.296 47.29v3.381c0 26.127 21.177 47.298 47.296 47.298h770.269c26.123 0 47.296-21.171 47.296-47.298v-3.381c0-26.12-21.173-47.29-47.296-47.29z', '#C45FA0'],
-  ['M717.962 543.153H542.047c-26.121 0-47.298 21.175-47.298 47.297v3.724c0 26.123 21.177 47.293 47.298 47.293h175.915c26.121 0 47.297-21.17 47.297-47.293v-3.724c0-26.122-21.176-47.297-47.297-47.297z', '#E5594F'],
-  ['M689.268 198.849H513.355c-26.122 0-47.298 21.175-47.298 47.297v3.722c0 26.12 21.176 47.297 47.298 47.297h175.912c26.122 0 47.298-21.177 47.298-47.297v-3.722c0-26.122-21.175-47.297-47.297-47.297z', '#F0D043'],
-  ['M757.789 353.081H261.17c-26.121 0-47.297 21.172-47.297 47.296v3.377c0 26.121 21.177 47.299 47.297 47.299h496.619c26.121 0 47.296-21.178 47.296-47.299v-3.377c0-26.125-21.175-47.296-47.296-47.296z', '#E5594F'],
-  ['M762.638 726.225h-496.62c-26.12 0-47.294 21.18-47.294 47.301v3.377c0 26.12 21.174 47.3 47.294 47.3h496.62c26.122 0 47.296-21.18 47.296-47.3v-3.377c0-26.122-21.174-47.301-47.296-47.301z', '#6277BA'],
-  ['M355.734 543.328H281.41c-26.122 0-47.297 21.17-47.297 47.293v3.378c0 26.118 21.175 47.297 47.297 47.297h74.324c26.123 0 47.296-21.179 47.296-47.297v-3.378c0-26.123-21.174-47.293-47.296-47.293z', '#F39A2B'],
-  ['M334.85 248.006m-48.986 0a48.986 48.986 0 1 0 97.972 0 48.986 48.986 0 1 0-97.972 0Z', '#F39A2B'],
-]
 
 /** The emblem's props, matching the harness `IconProps` the guide capsule hands it. */
 export interface ContextIconProps {
@@ -34,18 +25,21 @@ export interface ContextIconProps {
   className?: string
 }
 
-/** The colourful document sheet at the requested square edge. */
+/** The gauge dial at the requested square edge. */
 export function ContextIcon({ size = 20, className }: ContextIconProps): ReactElement {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 1024 1024"
       className={className}
+      viewBox="0 0 16 16"
+      fill="none"
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {SHEET_PATHS.map(([d, fill]) => <path key={d} d={d} fill={fill} />)}
+      <path d="M3.49 13.26A6.375 6.375 0 1 1 12.51 13.26" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M8 8.75L11.4 5.35" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="8" cy="8.75" r="1.55" fill="currentColor" />
     </svg>
   )
 }
@@ -59,7 +53,7 @@ export function ContextIcon({ size = 20, className }: ContextIconProps): ReactEl
  * (`.lc-title-label`) so the active chip's fade lands past the text, never on
  * the last glyphs.
  * @param t - the plugin-namespace translate bound in `apply`.
- * @returns the title component to register under the tab type's id.
+ * @returns the title component to register under the tab type id.
  */
 export function makeContextTabTitle(t: Translate): () => ReactElement {
   return function ContextTabTitle(): ReactElement {

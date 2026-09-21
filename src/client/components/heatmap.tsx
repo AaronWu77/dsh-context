@@ -1,8 +1,9 @@
 /**
- * The Context Dashboard's activity heatmap: a GitHub-style contribution grid
- * (weeks as columns, Monday-first weekdays as rows, a month label over the
- * column where each month begins) over the merged daily
- * ledger (overview.ts). Cell depth is the day's billed-token share of the
+ * The Context Dashboard's activity heatmap: a wall-calendar grid over the
+ * merged daily ledger (overview.ts) — Monday-first weekday columns run left
+ * to right, one row per week, and each row's own left gutter carries the
+ * month label where one begins. The horizontal read keeps the grid inside the
+ * insight column instead of stacking it into a tall block. Cell depth is the day's billed-token share of the
  * window's maximum, in four steps; a day with data is a button whose click
  * pins the session list to that day (click again to release). Cells tip
  * through the harness's own Tooltip primitive (instant on hover; native
@@ -135,15 +136,15 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
     return (
       <div className="lc-heat" role="group" aria-label={t('ov.heat.title')}>
         <div className="lc-heat-wds" aria-hidden="true">
-          {[0, 1, 2, 3, 4, 5, 6].map(row => (
-            <span key={row} className="lc-heat-wd">
-              {row === 1 ? weekdayLabels[0] : row === 3 ? weekdayLabels[1] : row === 5 ? weekdayLabels[2] : ''}
+          {[0, 1, 2, 3, 4, 5, 6].map(col => (
+            <span key={col} className="lc-heat-wd">
+              {col === 0 ? weekdayLabels[0] : col === 2 ? weekdayLabels[1] : col === 4 ? weekdayLabels[2] : ''}
             </span>
           ))}
         </div>
         <div className="lc-heat-cols">
           {columns.map((column, wi) => {
-            // A column is labeled when a month BEGINS inside it: the month
+            // A week row is labeled when a month BEGINS inside it: the month
             // changes between its Monday and Sunday, or its Monday IS the
             // 1st. The label names the Sunday's month — the new month in
             // both cases. Months that began before the window stay unlabeled.
