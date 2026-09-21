@@ -57,7 +57,7 @@ export function makeOverviewButton(
       const rows = rowsOfSnapshot(snapshot, undefined)
       return rows === null ? {} : aggregateDays(rows)
     }, [snapshot])
-    const open = (): void => { overviewStore.set(true) }
+    const open = (): void => { overviewStore.open() }
     if (entry === 'hide') return null
     if (props.wide !== true) {
       return (
@@ -81,6 +81,8 @@ export function makeOverviewButton(
         aria-label={t('ov.entry')}
         onClick={open}
         onKeyDown={(event) => {
+          // A focused cell owns its own keys; only the card body opens the panel.
+          if (event.target !== event.currentTarget) return
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
             open()
@@ -92,7 +94,12 @@ export function makeOverviewButton(
           <span className="lc-ov-widget-title">{t('ov.entry')}</span>
           <span className="lc-ov-widget-more" aria-hidden="true">{String.fromCharCode(0x203a)}</span>
         </div>
-        <QuotaGrid days={days} today={todayKey()} compact />
+        <QuotaGrid
+          days={days}
+          today={todayKey()}
+          compact
+          onSelectDay={(day) => { overviewStore.open(day ?? undefined) }}
+        />
       </div>
     )
   }

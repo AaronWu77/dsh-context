@@ -18,8 +18,6 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactElement }
 import { estimateSessionCost, formatCost, type CostCurrency, type ModelPrices } from '../cost'
 import { fmt } from '../format'
 import { useModelPrices } from '../modelPrices'
-import { balanceEntryOf, fetchPlatformBalance } from '../balance'
-import type { PlatformBalance } from '../../shared/types'
 import {
   aggregateDays, filterRows, groupCountsOf, inGroup, kpisOf, openSession,
   pageOf, refreshSessions, requestActivityBackfill, rowsOfSnapshot,
@@ -34,6 +32,7 @@ import type { ViewKit } from '../viewkit'
 import { makeErrorBoundary } from './errorBoundary'
 import { useEscapeClose } from './escapeClose'
 import { makeHeatmap, todayKey } from './heatmap'
+import { makeQuotaGrid } from './quotaCells'
 import { ContextIcon } from '../icon'
 import { makeOverviewCard } from './overviewCard'
 
@@ -54,113 +53,9 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
   
   const ErrorBoundary = makeErrorBoundary(t)
 
-  /** One rolling Codex quota window as the codexQuota service publishes it. */
-  interface CodexQuotaWindow {
-    bucketId: string
-    bucketName?: string
-    remainingPercent: number
-    windowSeconds: number
-    resetAt?: number
-  }
-  /** The quota snapshot that service exposes. */
-  interface CodexQuota {
-    windows: readonly CodexQuotaWindow[]
-    credits?: { unlimited: boolean; balance?: string }
-  }
-  /** The optional cross-plugin service (absent when that plugin is not mounted). */
-  interface CodexQuotaService {
-    snapshot(): CodexQuota | null
-    subscribe(listener: () => void): () => void
-  }
+  /** The account and quota grid both surface renders (quotaCells.tsx). */
+  const QuotaGrid = makeQuotaGrid(ctx, kit)
 
-  /** Read the optional codexQuota client service without requiring it. */
-  function codexQuotaOf(): CodexQuotaService | null {
-    const probe = ctx as unknown as { get?: (name: string) => unknown }
-    if (typeof probe.get !== 'function') return null
-    const value = probe.get('codexQuota')
-    if (value === null || typeof value !== 'object') return null
-    const candidate = value as Partial<CodexQuotaService>
-    return typeof candidate.snapshot === 'function' && typeof candidate.subscribe === 'function'
-      ? candidate as CodexQuotaService
-      : null
-  }
-
-  /** Stable fallbacks so the grid subscribes unconditionally. */
-  const NO_QUOTA = (): CodexQuota | null => null
-  const NEVER_CHANGES = (): (() => void) => () => {}
-
-  /** Currency symbol for the balance cells the platform serves. */
-  function symbolOf(currency: string): string {
-    if (currency === 'CNY') return String.fromCharCode(0x00a5)
-    if (currency === 'USD') return String.fromCharCode(0x0024)
-    return currency + ' '
-  }
-
-  /** One rolling window length as a compact label (5h, 7d). */
-  function windowLabel(seconds: number): string {
-    if (seconds % 86400 === 0) return String(seconds / 86400) + 'd'
-    if (seconds % 3600 === 0) return String(seconds / 3600) + 'h'
-    return String(Math.round(seconds / 60)) + 'm'
-  }
-
-  /** Remaining time until one window resets, or null when unknown. */
-  function resetInOf(win: CodexQuotaWindow): string | null {
-    if (win.resetAt === undefined) return null
-    const left = win.resetAt * 1000 - Date.now()
-    return left > 0 ? fmtDuration(left) : null
-  }
-
-  /**
-   * The account and quota grid above the KPI band: the platform balance, the
-   * signed-in Codex account rolling windows, and the tokens recorded for
-   * today. A cell whose figure is absent renders nothing rather than a
-   * placeholder.
-   */
-  function QuotaGrid({ days, currency }: { days: Record<string, { tokens: number }>; currency: CostCurrency }): ReactElement | null {
-    const [balance, setBalance] = useState<PlatformBalance | null>(null)
-    useEffect(() => {
-      let on = true
-      void fetchPlatformBalance().then((value) => { if (on) setBalance(value) })
-      return () => { on = false }
-    }, [])
-    const service = codexQuotaOf()
-    const quota = useSyncExternalStore(service?.subscribe ?? NEVER_CHANGES, service?.snapshot ?? NO_QUOTA)
-    const entry = balanceEntryOf(balance, currency)
-    const today = days[todayKey()]
-    const cells: ReactElement[] = []
-    if (entry !== null) {
-      cells.push(
-        <div className="lc-ov-quota-cell" key="balance">
-          <span className="lc-ov-quota-label">{t('ov.quota.balance')}</span>
-          <span className="lc-ov-quota-value">{symbolOf(entry.currency) + entry.total.toFixed(2)}</span>
-          <span className="lc-ov-quota-sub">{t('ov.quota.balanceSub', { granted: entry.granted.toFixed(2), topped: entry.toppedUp.toFixed(2) })}</span>
-        </div>,
-      )
-    }
-    const windows = [...(quota?.windows ?? [])]
-      .sort((left, right) => left.windowSeconds - right.windowSeconds)
-      .slice(0, 2)
-    for (const win of windows) {
-      const reset = resetInOf(win)
-      cells.push(
-        <div className="lc-ov-quota-cell" key={win.bucketId + ':' + win.windowSeconds}>
-          <span className="lc-ov-quota-label">{t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) })}</span>
-          <span className="lc-ov-quota-value">{t('ov.quota.remaining', { p: Math.round(win.remainingPercent) })}</span>
-          {reset !== null && <span className="lc-ov-quota-sub">{t('ov.quota.resetIn', { d: reset })}</span>}
-        </div>,
-      )
-    }
-    if (today !== undefined && today.tokens > 0) {
-      cells.push(
-        <div className="lc-ov-quota-cell" key="today">
-          <span className="lc-ov-quota-label">{t('ov.quota.today')}</span>
-          <span className="lc-ov-quota-value">{fmt(today.tokens)}</span>
-          <span className="lc-ov-quota-sub">{t('ov.kpi.tokens')}</span>
-        </div>,
-      )
-    }
-    return cells.length === 0 ? null : <div className="lc-ov-quota">{cells}</div>
-  }
 
   function activeCurrency(): CostCurrency {
     const locale = ctx.locale
@@ -176,6 +71,8 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     const wsSnapshot = workspacesSnapshotOf(props)
     const [range, setRange] = useState<OverviewRange>('30d')
     const [day, setDay] = useState<string | null>(null)
+  // The widget's today drill-down opens the panel with its day already pinned.
+  useEffect(() => { if (open) setDay(overviewStore.day()) }, [open])
     const [query, setQuery] = useState('')
     const [group, setGroup] = useState<string | null>(null)
     const [sort, setSort] = useState<OverviewSort>('recent')
@@ -254,7 +151,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
           ) : (
             <div className="lc-ov-body">
               <div className="lc-ov-left">
-                <QuotaGrid days={days} currency={currency} />
+                <QuotaGrid days={days} today={todayKey()} currency={currency} onSelectDay={setDay} />
                 <div className="lc-ov-kpis">
                   <div className="lc-stat lc-ov-kpi">
                     <span className="lc-stat-label">{t('ov.kpi.sessions')}</span>

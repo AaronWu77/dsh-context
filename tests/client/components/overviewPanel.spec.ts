@@ -138,7 +138,7 @@ describe('OverviewPanel', () => {
     const { m } = await openPanel(ctx)
     assert.equal(pulls, 1, 'the baseline re-pull fires on open')
     assert.deepEqual(backfillPosts, ['/api/dsh-context/backfill'], 'the warm-up trigger POST fires on open')
-    assert.ok(text(m.container).includes('Context Insights'))
+    assert.ok(text(m.container).includes('Quota & Usage'))
     // KPI band: 2 sessions in the 30d range, 1750 tokens billed, priced cost, cache hit.
     const labels = queryAll(m.container, '.lc-stat-label').map(el => el.textContent)
     assert.deepEqual(labels, ['Active Sessions', 'Tokens Used', 'Cost', 'Cache Hit', 'Tool Calls', 'Active Time'])
@@ -368,7 +368,7 @@ describe('OverviewPanel', () => {
       overviewStore.set(true)
     })
     await flush()
-    assert.ok(text(m.container).includes('上下文洞察'))
+    assert.ok(text(m.container).includes('额度与用量'))
     assert.ok(text(m.container).includes('活跃会话'))
     await flush() // the price book lands
     const values = queryAll(m.container, '.lc-stat-value').map(el => el.textContent)

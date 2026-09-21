@@ -11,10 +11,19 @@ export interface OverviewStore {
   subscribe: (listener: () => void) => () => void
   getSnapshot: () => boolean
   set: (open: boolean) => void
+  /**
+   * Open the dashboard, optionally pinned to one day — the widget's "today"
+   * drill-down lands the session list on that date.
+   * @param day - the day key to pin, or omitted for no pin.
+   */
+  open: (day?: string) => void
+  /** The day the panel should pin on its next open (null when unpinned). */
+  day: () => string | null
 }
 
 function createStore(): OverviewStore {
   let open = false
+  let pinned: string | null = null
   const listeners = new Set<() => void>()
   // Arrow properties: the useSyncExternalStore call passes them unbound.
   return {
@@ -28,6 +37,17 @@ function createStore(): OverviewStore {
       open = next
       for (const listener of listeners) listener()
     },
+    open: (day) => {
+      pinned = day ?? null
+      if (open) {
+        // Already open: a fresh pin still has to reach the panel.
+        for (const listener of listeners) listener()
+        return
+      }
+      open = true
+      for (const listener of listeners) listener()
+    },
+    day: () => pinned,
   }
 }
 

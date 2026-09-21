@@ -52,7 +52,7 @@
    stable` holds the bar's track so cards never reflow by its width when a
    column gains or loses it, and the right padding keeps the thumb clear of
    the card edges instead of riding on them. */
-.lc-ov-left { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
+.lc-ov-left { container: lc-quota / inline-size; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
 .lc-ov-right { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; }
 @container lc-ov (max-width: 932px) {
   .lc-ov-card { overflow-y: auto; }
@@ -169,19 +169,53 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--lc-
 .lc-ov-pager-btn:disabled { opacity: 0.4; cursor: default; }
 .lc-ov-pager-n { color: var(--dsw-alias-label-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* The account and quota grid above the KPI band (2x2). */
+/*
+ * The account and quota grid: two columns by default (2x2 for one account,
+ * 3x2 for two), three columns once the SURFACE is wide enough. The container
+ * is the sidebar widget — whose width follows the sidebar drag — or the
+ * dashboard insight column, so the same grid re-reads at either width and the
+ * cells never crush or leave a hole.
+ */
 .lc-ov-quota { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.lc-ov-quota-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-2); }
+@container lc-quota (min-width: 320px) {
+  /* Six or more cells means a second account's windows are in play: they fit
+     two rows of three rather than three rows of two. */
+  .lc-ov-quota:has(> :nth-child(6)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/*
+ * Every cell is a drill-down button: clicking it opens the detail block below
+ * the grid. `font: inherit` keeps the button chrome from overriding the
+ * compact type scale the widget sets.
+ */
+.lc-ov-quota-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-2); font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color 120ms ease, background 120ms ease; }
+.lc-ov-quota-cell:hover { border-color: color-mix(in srgb, var(--lc-ov-accent) 45%, var(--dsw-alias-border-l2)); }
+.lc-ov-quota-cell:focus-visible { outline: 2px solid color-mix(in srgb, var(--lc-ov-accent) 60%, transparent); outline-offset: 1px; }
+.lc-ov-quota-on { border-color: color-mix(in srgb, var(--lc-ov-accent) 65%, transparent); }
 .lc-ov-quota-label { color: var(--dsw-alias-label-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-ov-quota-value { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-ov-quota-sub { color: var(--dsw-alias-label-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The account badge names the subscription a window cell belongs to; it only
+   appears once a second account is signed in. */
+.lc-ov-quota-acct { margin-left: 6px; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-secondary) 14%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.lc-ov-quota-acct-on { background: color-mix(in srgb, var(--lc-ov-accent) 16%, transparent); color: var(--lc-ov-accent); }
+/* The drill-down block spans the grid under the cell that opened it. */
+.lc-ov-quota-detail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 80%, transparent); }
+.lc-ov-quota-detail-head { display: flex; align-items: center; gap: 6px; }
+.lc-ov-quota-detail-title { font-weight: 600; color: var(--dsw-alias-label-primary); font-size: 12px; }
+.lc-ov-quota-detail-close { margin-left: auto; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; }
+.lc-ov-quota-detail-close:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.lc-ov-quota-detail-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.lc-ov-quota-detail-label { color: var(--dsw-alias-label-secondary); }
+.lc-ov-quota-detail-value { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--dsw-alias-label-primary); }
+.lc-ov-quota-detail-action { align-self: flex-start; margin-top: 2px; border: 1px solid color-mix(in srgb, var(--lc-ov-accent) 45%, transparent); color: var(--lc-ov-accent); background: color-mix(in srgb, var(--lc-ov-accent) 10%, transparent); border-radius: 999px; font: inherit; font-size: 11px; padding: 2px 10px; cursor: pointer; }
+.lc-ov-quota-detail-action:hover { background: color-mix(in srgb, var(--lc-ov-accent) 18%, transparent); }
 
 /* The heatmap window switch sits at the card head, opposite the title. */
 .lc-ov-heat-range { margin-left: auto; }
 
 /* The always-visible sidebar-foot widget: a compact frosted card carrying the
    account and quota grid; the whole card opens the detail overlay. */
-.lc-ov-widget { --lc-ov-accent: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--color-blue-500)); display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px; padding: 8px 9px 9px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 70%, transparent); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 62%, transparent); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: var(--dsw-shadow-lv1, 0 2px 10px rgba(0, 0, 0, 0.18)); cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
+.lc-ov-widget { --lc-ov-accent: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--color-blue-500)); container: lc-quota / inline-size; display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px; padding: 8px 9px 9px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 70%, transparent); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 62%, transparent); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: var(--dsw-shadow-lv1, 0 2px 10px rgba(0, 0, 0, 0.18)); cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
 .lc-ov-widget:hover { background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 78%, transparent); box-shadow: var(--dsw-shadow-lv2, 0 4px 16px rgba(0, 0, 0, 0.22)); }
 .lc-ov-widget:focus-visible { outline: 2px solid color-mix(in srgb, var(--lc-ov-accent) 60%, transparent); outline-offset: 2px; }
 .lc-ov-widget-head { display: flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
