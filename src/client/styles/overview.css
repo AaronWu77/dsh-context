@@ -92,7 +92,7 @@
    past a 20px column never meets the next label. */
 .lc-heat-col { position: relative; display: flex; flex-direction: column; gap: 3px; }
 .lc-heat-mon { position: absolute; top: 0; left: 0; font-size: 9px; line-height: 13px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
-.lc-heat-cell { width: 20px; height: 20px; box-sizing: border-box; border: 0; border-radius: 20%; padding: 0; background: var(--dsw-alias-bg-layer-2); cursor: default; }
+.lc-heat-cell { width: 20px; height: 20px; box-sizing: border-box; border: 0; border-radius: 24%; padding: 0; background: var(--dsw-alias-bg-layer-2); cursor: default; }
 button.lc-heat-cell { cursor: pointer; }
 button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-blue-500) 70%, transparent); }
 .lc-heat-future { background: transparent; }
@@ -176,3 +176,6 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 .lc-ov-quota-label { color: var(--dsw-alias-label-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-ov-quota-value { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-ov-quota-sub { color: var(--dsw-alias-label-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The heatmap window switch sits at the card head, opposite the title. */
+.lc-ov-heat-range { margin-left: auto; }

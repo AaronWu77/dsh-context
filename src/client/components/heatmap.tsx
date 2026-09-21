@@ -15,14 +15,17 @@
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReactElement } from 'react'
 import { dayKeyOf, mondayOfWeek, shiftDayKey } from '../../shared/days'
+import { fmt } from '../format'
 import { type DayTotals } from '../overview'
 import type { ViewKit } from '../viewkit'
 
 export interface HeatmapProps {
   /** Merged ledger (day key → that day's figures). */
   days: Record<string, DayTotals>
-  /** Columns to draw (default 8 — two months). */
+  /** Columns to draw (default 8 — two months); ignored when `windowDays` is set. */
   weeks?: number
+  /** Draw exactly the last N days, blanking the leading partial week. */
+  windowDays?: number
   /** The pinned day key, when the list is filtered to a day. */
   selected?: string | null
   /** Day-pin relay; a data-less day is inert. */
@@ -36,6 +39,8 @@ interface HeatCell {
   key: string
   entry?: DayTotals
   future: boolean
+  /** Before the requested window: drawn blank and inert. */
+  outside?: boolean
 }
 
 /**
@@ -66,6 +71,33 @@ export function gridOf(today: string, weeks: number): HeatCell[][] | null {
   return columns
 }
 
+/**
+ * Lay out exactly the last `days` days ending at today, week-aligned: the
+ * leading partial week is marked `outside` so the requested window is what the
+ * reader sees. Returns null when the calendar math fails.
+ */
+export function gridWindowOf(today: string, days: number): HeatCell[][] | null {
+  if (days < 1) return null
+  const start = shiftDayKey(today, -(days - 1))
+  const firstMonday = start === null ? null : mondayOfWeek(start)
+  if (start === null || firstMonday === null) return null
+  const columns: HeatCell[][] = []
+  for (let w = 0; ; w++) {
+    const monday = shiftDayKey(firstMonday, 7 * w)
+    /* v8 ignore next -- bounded by firstMonday and today, both proven valid. */
+    if (monday === null) return null
+    const column: HeatCell[] = []
+    for (let d = 0; d < 7; d++) {
+      const key = shiftDayKey(monday, d)
+      if (key === null) return null
+      column.push({ key, future: key > today, outside: key < start })
+    }
+    columns.push(column)
+    const sunday = column[6]
+    if (sunday !== undefined && sunday.key >= today) return columns
+  }
+}
+
 /** The cell's depth class: empty, then four steps up to the window's maximum. */
 function levelOf(tokens: number, max: number): number {
   if (tokens <= 0 || max <= 0) return 0
@@ -79,8 +111,9 @@ function levelOf(tokens: number, max: number): number {
 export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement {
   const { t } = kit
   return function Heatmap(props: HeatmapProps): ReactElement {
-    const weeks = props.weeks ?? 8
-    const columns = gridOf(props.today, weeks)
+    const columns = props.windowDays === undefined
+      ? gridOf(props.today, props.weeks ?? 8)
+      : gridWindowOf(props.today, props.windowDays)
     if (columns === null) return <div className="lc-empty">{t('ov.heat.empty')}</div>
     // Join the ledger onto the grid and price the depth scale. The record is
     // widened honestly: a day-key read can miss at runtime.
@@ -89,6 +122,7 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
     let any = false
     for (const column of columns) {
       for (const cell of column) {
+        if (cell.future || cell.outside === true) continue
         const entry = byKey[cell.key]
         if (entry === undefined || (entry.tokens <= 0 && entry.requests <= 0)) continue
         cell.entry = entry
@@ -118,7 +152,7 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
               <div key={wi} className="lc-heat-col">
                 {opens && <span className="lc-heat-mon" aria-hidden="true">{t('ov.heat.mon.' + column[6].key.slice(5, 7))}</span>}
                 {column.map((cell) => {
-                  if (cell.future) return <span key={cell.key} className="lc-heat-cell lc-heat-future" aria-hidden="true" />
+                  if (cell.future || cell.outside === true) return <span key={cell.key} className="lc-heat-cell lc-heat-future" aria-hidden="true" />
                   const level = cell.entry === undefined ? 0 : levelOf(cell.entry.tokens, max)
                   if (cell.entry === undefined) {
                     return (
@@ -128,7 +162,7 @@ export function makeHeatmap(kit: ViewKit): (props: HeatmapProps) => ReactElement
                     )
                   }
                   const picked = props.selected === cell.key
-                  const label = `${cell.key}\n${t('ov.heat.sessions', { n: cell.entry.sessions })}`
+                  const label = `${cell.key}\n${fmt(cell.entry.tokens)} ${t('ov.kpi.tokens')} · ${t('ov.heat.sessions', { n: cell.entry.sessions })}`
                   return (
                     <Tooltip key={cell.key} label={label} side="top">
                       <button

@@ -179,6 +179,8 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     const [query, setQuery] = useState('')
     const [group, setGroup] = useState<string | null>(null)
     const [sort, setSort] = useState<OverviewSort>('recent')
+    /** Heatmap window: the last 30 days by default, 7 on request. */
+    const [heatDays, setHeatDays] = useState<number>(30)
     const [page, setPage] = useState(0)
     const close = (): void => { overviewStore.set(false) }
     useEscapeClose(open, close)
@@ -292,8 +294,18 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                   <div className="lc-card-title">
                     <span className="lc-card-title-text">{t('ov.heat.title')}</span>
                     <span className="lc-card-sub">{t('ov.heat.sub')}</span>
+                    <div className="lc-gran lc-ov-heat-range" role="group" aria-label={t('ov.heat.title')}>
+                      {[7, 30].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          className={'lc-gran-btn' + (heatDays === n ? ' lc-gran-on' : '')}
+                          onClick={() => { setHeatDays(n) }}
+                        >{t(n === 7 ? 'ov.range.7d' : 'ov.range.30d')}</button>
+                      ))}
+                    </div>
                   </div>
-                  <Heatmap days={days} selected={day} onSelect={setDay} today={todayKey()} />
+                  <Heatmap days={days} windowDays={heatDays} selected={day} onSelect={setDay} today={todayKey()} />
                 </div>
               </div>
 
