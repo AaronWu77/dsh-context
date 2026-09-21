@@ -30,6 +30,7 @@ import {
 import { overviewStore } from '../overviewStore'
 import type { ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
+import { IconGaugeOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { makeBalanceCapsule } from './balanceCapsule'
 import { makeErrorBoundary } from './errorBoundary'
 import { useEscapeClose } from './escapeClose'
@@ -234,7 +235,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
       <div className="lc-ov-backdrop" onClick={close}>
         <div className="lc-ov-card" onClick={(ev) => { ev.stopPropagation() }}>
           <div className="lc-ov-head">
-            <ContextIcon size={18} className="lc-ov-head-icon" />
+            <IconGaugeOutline16 size={18} className="lc-ov-head-icon" />
             <span className="lc-ov-title">{t('ov.title')}</span>
             {/* The DeepSeek platform balance (client/balance.ts): renders nothing
                 until a live figure lands, so the header row never reflows for it. */}
