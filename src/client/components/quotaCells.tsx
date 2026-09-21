@@ -172,13 +172,15 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
     const toggle = (next: Detail): void => {
       setDetail((current) => (current !== null && current.kind === next.kind && current.key === next.key ? null : next))
     }
+    // The label line is a flex row: the NAME truncates first (it is the
+    // longest), the rank chip never does.
     const cell = (
       key: string,
-      label: ReactElement | string,
+      name: string,
       value: string,
       sub: string | null,
       target: Detail,
-      extra?: ReactElement,
+      chip?: ReactElement | null,
     ): ReactElement => {
       const open = detail !== null && detail.kind === target.kind && detail.key === target.key
       return (
@@ -190,10 +192,12 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
           onClick={(event) => { event.stopPropagation(); toggle(target) }}
           onKeyDown={(event) => { event.stopPropagation() }}
         >
-          <span className="lc-ov-quota-label">{label}</span>
+          <span className="lc-ov-quota-label">
+            <span className="lc-ov-quota-name">{name}</span>
+            {chip ?? null}
+          </span>
           <span className="lc-ov-quota-value">{value}</span>
           {sub !== null && <span className="lc-ov-quota-sub">{sub}</span>}
-          {extra}
         </button>
       )
     }
@@ -216,6 +220,14 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         { kind: 'today' },
       ))
     }
+    // Multi-account surfaces mark each window with the account's rank instead
+    // of its key: the full `acct <hash>` label cannot fit a three-column cell,
+    // and the legend under the grid carries the mapping.
+    const rankOf = (accountKey: string): ReactElement | null => {
+      if (!named) return null
+      const rank = accounts.findIndex(candidate => candidate.accountKey === accountKey) + 1
+      return <span className={'lc-ov-quota-rank' + (accounts[rank - 1]?.active === true ? ' lc-ov-quota-rank-on' : '')}>{'#' + String(rank)}</span>
+    }
     for (const account of accounts) {
       const windows = [...account.windows]
         .sort((left, right) => left.windowSeconds - right.windowSeconds)
@@ -223,15 +235,13 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       for (const win of windows) {
         const reset = resetInOf(win)
         const key = account.accountKey + ':' + win.windowSeconds
-        const accountBadge = named
-          ? <span className={'lc-ov-quota-acct' + (account.active ? ' lc-ov-quota-acct-on' : '')}>{account.label === '' ? t('ov.quota.accountCurrent') : account.label}</span>
-          : null
         cells.push(cell(
           key,
-          <>{t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) })}{accountBadge}</>,
+          t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) }),
           t('ov.quota.remaining', { p: Math.round(win.remainingPercent) }),
           reset === null ? null : t('ov.quota.resetIn', { d: reset }),
           { kind: 'window', key },
+          rankOf(account.accountKey),
         ))
       }
     }
@@ -278,6 +288,17 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         if (refreshed !== undefined) rows.push([t('ov.quota.detail.refreshed'), fmtDuration(Date.now() - refreshed) + ' ' + t('ov.quota.detail.ago')])
       }
     }
+    const legend = !named ? null : (
+      <div className="lc-ov-quota-legend" role="group" aria-label={t('ov.quota.legend')}>
+        {accounts.map((account, index) => (
+          <span className="lc-ov-quota-legend-item" key={account.accountKey}>
+            <span className={'lc-ov-quota-rank' + (account.active ? ' lc-ov-quota-rank-on' : '')}>{'#' + String(index + 1)}</span>
+            <span className="lc-ov-quota-legend-label">{account.label === '' ? t('ov.quota.accountCurrent') : account.label}</span>
+            {account.active && <span className="lc-ov-quota-legend-active">{t('ov.quota.accountCurrent')}</span>}
+          </span>
+        ))}
+      </div>
+    )
     const panel = rows.length === 0 ? null : (
       <div className="lc-ov-quota-detail" role="group" aria-label={detailTitle} onClick={(event) => { event.stopPropagation() }}>
         <div className="lc-ov-quota-detail-head">
@@ -301,6 +322,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
     return (
       <div className={'lc-ov-quota' + (props.compact === true ? ' lc-ov-quota-compact' : '')}>
         {cells}
+        {legend}
         {panel}
       </div>
     )
