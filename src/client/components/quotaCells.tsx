@@ -90,7 +90,9 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
     const [balance, setBalance] = useState<PlatformBalance | null>(null)
     useEffect(() => {
       let on = true
-      void fetchPlatformBalance().then((value) => { if (on) setBalance(value) })
+      // Sticky: a later read that reports nothing keeps the last real figure
+      // instead of blanking the cell between refreshes.
+      void fetchPlatformBalance().then((value) => { if (on && value !== null) setBalance(value) })
       return () => { on = false }
     }, [])
     const service = codexQuotaOf()
@@ -107,6 +109,15 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         </div>,
       )
     }
+    if (today !== undefined && today.tokens > 0) {
+      cells.push(
+        <div className="lc-ov-quota-cell" key="today">
+          <span className="lc-ov-quota-label">{t('ov.quota.today')}</span>
+          <span className="lc-ov-quota-value">{fmt(today.tokens)}</span>
+          <span className="lc-ov-quota-sub">{t('ov.kpi.tokens')}</span>
+        </div>,
+      )
+    }
     const windows = [...(quota?.windows ?? [])]
       .sort((left, right) => left.windowSeconds - right.windowSeconds)
       .slice(0, 2)
@@ -117,15 +128,6 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
           <span className="lc-ov-quota-label">{t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) })}</span>
           <span className="lc-ov-quota-value">{t('ov.quota.remaining', { p: Math.round(win.remainingPercent) })}</span>
           {reset !== null && <span className="lc-ov-quota-sub">{t('ov.quota.resetIn', { d: reset })}</span>}
-        </div>,
-      )
-    }
-    if (today !== undefined && today.tokens > 0) {
-      cells.push(
-        <div className="lc-ov-quota-cell" key="today">
-          <span className="lc-ov-quota-label">{t('ov.quota.today')}</span>
-          <span className="lc-ov-quota-value">{fmt(today.tokens)}</span>
-          <span className="lc-ov-quota-sub">{t('ov.kpi.tokens')}</span>
         </div>,
       )
     }
