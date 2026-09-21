@@ -1,34 +1,47 @@
 /**
- * The Context Dashboard's sidebar entry: a footer action stacked directly
- * above Settings (the harness's own foot layout: footer actions, then the
- * settings row), mirroring the Settings trigger's geometry in both column
- * widths. The button carries the plugin emblem and, on the wide
- * column, its label. Clicking opens the overview overlay through the shared
- * module store (overviewStore.ts).
+ * The Context insight entry at the sidebar foot, directly above Settings.
  *
- * The per-user `insightsEntry` preference takes the entry down (renders
- * null) without unregistering the seat. The subscription fails open: an
- * absent settings store, an unserved namespace, or a value the plugin
- * cannot understand all leave the entry visible.
+ * On the wide column this IS the always-visible panel: a small frosted widget
+ * carrying the account and quota grid, so the figures need no click. On the
+ * 56px rail the same seat stays the plugin's icon button. Clicking either
+ * opens the detailed dashboard overlay, which is where the full dashboard
+ * lives.
  */
-
-import { useSyncExternalStore, type ReactElement } from 'react'
+import { useMemo, useSyncExternalStore, type ReactElement } from 'react'
 import { ContextIcon } from '../icon'
 import { overviewStore } from '../overviewStore'
+import { aggregateDays, rowsOfSnapshot, sessionsSnapshotOf } from '../overview'
+import { todayKey } from './heatmap'
+import { makeQuotaGrid } from './quotaCells'
 import type { ContextSettings, InsightsEntry } from '../settings'
+import type { ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
 
 export interface OverviewButtonProps {
-  /** The footer-action owner share: false on the collapsed 56px rail (icon only). */
+  /** The footer-action owner share: false on the collapsed 56px rail. */
   wide?: boolean
+  /** Root standard kit: every session row's host-cached projections. */
+  useSessions?: unknown
 }
 
 /** Stable subscription faces for the settings-less degrade (no re-subscribes). */
 const subscribeNever = (): (() => void) => () => {}
 const entryShown = (): 'show' => 'show'
 
-export function makeOverviewButton(kit: ViewKit, settings?: ContextSettings): (props: OverviewButtonProps) => ReactElement | null {
+/**
+ * Build the sidebar-foot occupant.
+ * @param kit - the slot kit (locale and formatting seats).
+ * @param ctx - the client context (optional codexQuota service lookup).
+ * @param settings - the plugin preferences, when the settings face is served.
+ * @returns the widget/button component for the `sidebar.footer.action` seat.
+ */
+export function makeOverviewButton(
+  kit: ViewKit,
+  ctx: ClientCtx,
+  settings?: ContextSettings,
+): (props: OverviewButtonProps) => ReactElement | null {
   const { t } = kit
+  const QuotaGrid = makeQuotaGrid(ctx, kit)
   // Stable per-factory faces: useSyncExternalStore resubscribes when the
   // subscribe identity changes, so both wrappers are made once, here.
   const subscribeEntry = settings === undefined
@@ -38,18 +51,49 @@ export function makeOverviewButton(kit: ViewKit, settings?: ContextSettings): (p
   return function OverviewButton(props: OverviewButtonProps): ReactElement | null {
     // The entry toggle: subscribed, so a preference flip takes effect live.
     const entry = useSyncExternalStore(subscribeEntry, getEntry)
+    // The day ledger behind the widget's "today" cell (root standard kit).
+    const snapshot = sessionsSnapshotOf(props)
+    const days = useMemo(() => {
+      const rows = rowsOfSnapshot(snapshot, undefined)
+      return rows === null ? {} : aggregateDays(rows)
+    }, [snapshot])
+    const open = (): void => { overviewStore.set(true) }
     if (entry === 'hide') return null
+    if (props.wide !== true) {
+      return (
+        <button
+          type="button"
+          className="lc-ov-entry lc-ov-entry-rail"
+          title={t('ov.entry')}
+          aria-label={t('ov.entry')}
+          onClick={open}
+        >
+          <ContextIcon size={18} className="lc-ov-entry-icon" />
+        </button>
+      )
+    }
     return (
-      <button
-        type="button"
-        className={props.wide === true ? 'lc-ov-entry' : 'lc-ov-entry lc-ov-entry-rail'}
+      <div
+        className="lc-ov-widget"
+        role="button"
+        tabIndex={0}
         title={t('ov.entry')}
         aria-label={t('ov.entry')}
-        onClick={() => { overviewStore.set(true) }}
+        onClick={open}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            open()
+          }
+        }}
       >
-        <ContextIcon size={props.wide === true ? 16 : 18} className="lc-ov-entry-icon" />
-        {props.wide === true && <span className="lc-ov-entry-label">{t('ov.entry')}</span>}
-      </button>
+        <div className="lc-ov-widget-head">
+          <ContextIcon size={14} className="lc-ov-entry-icon" />
+          <span className="lc-ov-widget-title">{t('ov.entry')}</span>
+          <span className="lc-ov-widget-more" aria-hidden="true">{String.fromCharCode(0x203a)}</span>
+        </div>
+        <QuotaGrid days={days} today={todayKey()} compact />
+      </div>
     )
   }
 }

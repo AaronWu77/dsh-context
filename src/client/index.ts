@@ -134,7 +134,7 @@ function apply(ctx: ClientCtx): void {
   // from the frame-wide shell.overlay seat, and the module store
   // (overviewStore.ts) carries the open flag between the two registrations.
   // Both seats are root-scope list slots present since the supported baseline.
-  const OverviewButton = makeOverviewButton(kit, settings)
+  const OverviewButton = makeOverviewButton(kit, ctx, settings)
   ctx.slots.inject('sidebar.footer.action', () => {
     return ctx.slots.register(
       { name: 'sidebar.footer.action', id: 'context-overview', order: 10, locale: NS },
