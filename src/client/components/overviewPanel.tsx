@@ -54,18 +54,40 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
   const BalanceCapsule = makeBalanceCapsule(ctx, kit)
   const ErrorBoundary = makeErrorBoundary(t)
 
-  /** One Codex rate-limit window as dsh-codex-connect publishes it. */
-  interface CodexWindow { usedPercent?: number; resetsAt?: string; windowMinutes?: number }
-  /** The optional cross-plugin quota service (absent when that plugin is not mounted). */
-  interface CodexQuota { fetchedAt?: number; fiveHour?: CodexWindow; weekly?: CodexWindow }
+  /** One rolling Codex quota window as the codexQuota service publishes it. */
+  interface CodexQuotaWindow {
+    bucketId: string
+    bucketName?: string
+    remainingPercent: number
+    windowSeconds: number
+    resetAt?: number
+  }
+  /** The quota snapshot that service exposes. */
+  interface CodexQuota {
+    windows: readonly CodexQuotaWindow[]
+    credits?: { unlimited: boolean; balance?: string }
+  }
+  /** The optional cross-plugin service (absent when that plugin is not mounted). */
+  interface CodexQuotaService {
+    snapshot(): CodexQuota | null
+    subscribe(listener: () => void): () => void
+  }
 
   /** Read the optional codexQuota client service without requiring it. */
-  function codexQuotaOf(): CodexQuota | null {
+  function codexQuotaOf(): CodexQuotaService | null {
     const probe = ctx as unknown as { get?: (name: string) => unknown }
     if (typeof probe.get !== 'function') return null
     const value = probe.get('codexQuota')
-    return value !== null && typeof value === 'object' ? (value as CodexQuota) : null
+    if (value === null || typeof value !== 'object') return null
+    const candidate = value as Partial<CodexQuotaService>
+    return typeof candidate.snapshot === 'function' && typeof candidate.subscribe === 'function'
+      ? candidate as CodexQuotaService
+      : null
   }
+
+  /** Stable fallbacks so the grid subscribes unconditionally. */
+  const NO_QUOTA = (): CodexQuota | null => null
+  const NEVER_CHANGES = (): (() => void) => () => {}
 
   /** Currency symbol for the balance cells the platform serves. */
   function symbolOf(currency: string): string {
@@ -74,19 +96,25 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     return currency + ' '
   }
 
+  /** One rolling window length as a compact label (5h, 7d). */
+  function windowLabel(seconds: number): string {
+    if (seconds % 86400 === 0) return String(seconds / 86400) + 'd'
+    if (seconds % 3600 === 0) return String(seconds / 3600) + 'h'
+    return String(Math.round(seconds / 60)) + 'm'
+  }
+
   /** Remaining time until one window resets, or null when unknown. */
-  function resetInOf(win: CodexWindow): string | null {
-    if (win.resetsAt === undefined) return null
-    const at = Date.parse(win.resetsAt)
-    if (!Number.isFinite(at)) return null
-    const left = at - Date.now()
+  function resetInOf(win: CodexQuotaWindow): string | null {
+    if (win.resetAt === undefined) return null
+    const left = win.resetAt * 1000 - Date.now()
     return left > 0 ? fmtDuration(left) : null
   }
 
   /**
-   * The account and quota grid above the KPI band: the platform balance, both
-   * Codex windows, and the tokens recorded for today. A cell whose figure is
-   * absent renders nothing rather than a placeholder.
+   * The account and quota grid above the KPI band: the platform balance, the
+   * signed-in Codex account rolling windows, and the tokens recorded for
+   * today. A cell whose figure is absent renders nothing rather than a
+   * placeholder.
    */
   function QuotaGrid({ days, currency }: { days: Record<string, { tokens: number }>; currency: CostCurrency }): ReactElement | null {
     const [balance, setBalance] = useState<PlatformBalance | null>(null)
@@ -95,8 +123,9 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
       void fetchPlatformBalance().then((value) => { if (on) setBalance(value) })
       return () => { on = false }
     }, [])
+    const service = codexQuotaOf()
+    const quota = useSyncExternalStore(service?.subscribe ?? NEVER_CHANGES, service?.snapshot ?? NO_QUOTA)
     const entry = balanceEntryOf(balance, currency)
-    const quota = codexQuotaOf()
     const today = days[todayKey()]
     const cells: ReactElement[] = []
     if (entry !== null) {
@@ -108,14 +137,15 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
         </div>,
       )
     }
-    const windows = [['5h', 'ov.quota.codex5h', quota?.fiveHour], ['week', 'ov.quota.codexWeek', quota?.weekly]] as const
-    for (const [key, label, win] of windows) {
-      if (win === undefined) continue
+    const windows = [...(quota?.windows ?? [])]
+      .sort((left, right) => left.windowSeconds - right.windowSeconds)
+      .slice(0, 2)
+    for (const win of windows) {
       const reset = resetInOf(win)
       cells.push(
-        <div className="lc-ov-quota-cell" key={key}>
-          <span className="lc-ov-quota-label">{t(label)}</span>
-          <span className="lc-ov-quota-value">{win.usedPercent === undefined ? '?' : Math.round(win.usedPercent) + '%'}</span>
+        <div className="lc-ov-quota-cell" key={win.bucketId + ':' + win.windowSeconds}>
+          <span className="lc-ov-quota-label">{t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) })}</span>
+          <span className="lc-ov-quota-value">{t('ov.quota.remaining', { p: Math.round(win.remainingPercent) })}</span>
           {reset !== null && <span className="lc-ov-quota-sub">{t('ov.quota.resetIn', { d: reset })}</span>}
         </div>,
       )
@@ -132,7 +162,6 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     return cells.length === 0 ? null : <div className="lc-ov-quota">{cells}</div>
   }
 
-  /** The display currency follows the active locale (zh → CNY), read per render — the slot outlet re-renders on a locale switch. */
   function activeCurrency(): CostCurrency {
     const locale = ctx.locale
     const active = typeof locale.getLocale === 'function' ? locale.getLocale().active : 'en'
