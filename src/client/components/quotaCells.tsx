@@ -104,6 +104,25 @@ function windowLabel(seconds: number): string {
   return String(Math.round(seconds / 60)) + 'm'
 }
 
+/**
+ * The windows one account shows, shortest first. The server reports one window
+ * per bucket, so the same LENGTH can arrive from several buckets (the main Codex
+ * bucket plus a model-specific one): keep the most constrained value per length,
+ * so a row never hides the scarcer of two five-hour windows.
+ * @param account - one signed-in account as the service publishes it.
+ * @returns up to two windows, shortest first.
+ */
+function windowsOf(account: CodexQuotaAccount): CodexQuotaWindow[] {
+  const byLength = new Map<number, CodexQuotaWindow>()
+  for (const win of account.windows) {
+    const current = byLength.get(win.windowSeconds)
+    if (current === undefined || win.remainingPercent < current.remainingPercent) byLength.set(win.windowSeconds, win)
+  }
+  return [...byLength.values()]
+    .sort((left, right) => left.windowSeconds - right.windowSeconds)
+    .slice(0, WINDOWS_PER_ACCOUNT)
+}
+
 /** The account rows to render: the service's list, or the active account alone. */
 function accountsOf(quota: CodexQuota | null): CodexQuotaAccount[] {
   if (quota === null) return []
@@ -232,9 +251,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       return <span className={'lc-ov-quota-rank' + (accounts[rank - 1]?.active === true ? ' lc-ov-quota-rank-on' : '')}>{'#' + String(rank)}</span>
     }
     for (const account of accounts) {
-      const windows = [...account.windows]
-        .sort((left, right) => left.windowSeconds - right.windowSeconds)
-        .slice(0, WINDOWS_PER_ACCOUNT)
+      const windows = windowsOf(account)
       for (const win of windows) {
         const reset = resetInOf(win)
         const key = account.accountKey + ':' + win.windowSeconds
@@ -295,7 +312,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       const account = accounts.find(candidate => candidate.accountKey === detail.key)
       if (account !== undefined) {
         detailTitle = account.label === '' ? t('ov.quota.accountCurrent') : account.label
-        for (const win of [...account.windows].sort((left, right) => left.windowSeconds - right.windowSeconds).slice(0, WINDOWS_PER_ACCOUNT)) {
+        for (const win of windowsOf(account)) {
           const reset = resetInOf(win)
           rows.push([t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) }), t('ov.quota.remaining', { p: Math.round(win.remainingPercent) }) + (reset === null ? '' : ' · ' + t('ov.quota.resetIn', { d: reset }))])
         }
@@ -341,9 +358,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
           {summary}
           {accounts.map((account, index) => {
             const accountOpen = detail !== null && detail.kind === 'account' && detail.key === account.accountKey
-            const windows = [...account.windows]
-              .sort((left, right) => left.windowSeconds - right.windowSeconds)
-              .slice(0, WINDOWS_PER_ACCOUNT)
+            const windows = windowsOf(account)
             const reset = windows.map(win => resetInOf(win)).filter((value): value is string => value !== null).join(' · ')
             return (
               <button
