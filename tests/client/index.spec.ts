@@ -59,7 +59,7 @@ describe('client entry: dictionaries', () => {
     assert.equal(dicts.zh, DICT_ZH)
     assert.equal(dicts.en, DICT_EN)
     // The bound translate resolves through the active-locale → en chain.
-    assert.equal(ctx.locale.bind('dsh-context')('tab'), 'Context')
+    assert.equal(ctx.locale.bind('dsh-context')('tab'), 'Quota & Usage')
     ctx.dispose()
     assert.equal(ctx.locale.namespaces.has('dsh-context'), false)
   })
@@ -67,7 +67,7 @@ describe('client entry: dictionaries', () => {
   test('the zh active locale binds the zh dictionary arm', () => {
     const ctx = new TestClientCtx({ locale: 'zh' })
     applyTo(ctx)
-    assert.equal(ctx.locale.bind('dsh-context')('tab'), '上下文')
+    assert.equal(ctx.locale.bind('dsh-context')('tab'), '额度与用量')
     ctx.dispose()
   })
 })
@@ -83,7 +83,7 @@ describe('client entry: conversation.view slot', () => {
     assert.equal(registration.id, 'context')
     assert.equal(registration.order, 20)
     assert.equal(registration.locale, 'dsh-context')
-    assert.equal(registration.label?.(), 'Context')
+    assert.equal(registration.label?.(), 'Quota & Usage')
 
     const el = component({ sessionId: 's1', useProjection: () => undefined }) as ReactElement
     assert.equal(typeof el.type, 'function')
@@ -97,7 +97,7 @@ describe('client entry: conversation.view slot', () => {
   test('the tab label translates to zh under an zh locale', () => {
     const ctx = new TestClientCtx({ locale: 'zh' })
     applyTo(ctx)
-    assert.equal(ctx.slots.of('conversation.view')[0].registration.label?.(), '上下文')
+    assert.equal(ctx.slots.of('conversation.view')[0].registration.label?.(), '额度与用量')
     ctx.dispose()
   })
 })
@@ -211,7 +211,7 @@ describe('client entry: Context Dashboard seats', () => {
     const actionEl = actions[0].component({ wide: true }) as ReactElement
     assert.equal((actionEl.type as { name: string }).name, 'OverviewButton')
     const actionMount = await mount(actionEl)
-    assert.equal(query(actionMount.container, '.lc-ov-entry-label').textContent, 'Context Insights')
+    assert.equal(query(actionMount.container, '.lc-ov-widget-title').textContent, 'Quota & Usage')
     await actionMount.unmount()
 
     const overlays = ctx.slots.of('shell.overlay')
@@ -232,7 +232,7 @@ describe('client entry: Context Dashboard seats', () => {
     applyTo(ctx)
     const actionEl = ctx.slots.of('sidebar.footer.action')[0].component({ wide: true }) as ReactElement
     const actionMount = await mount(actionEl)
-    await click(query(actionMount.container, 'button.lc-ov-entry'))
+    await click(query(actionMount.container, '.lc-ov-widget'))
     const overlayEl = ctx.slots.of('shell.overlay')[0].component({}) as ReactElement
     const overlayMount = await mount(overlayEl)
     assert.ok(overlayMount.container.textContent!.includes('The session list is unavailable'))
@@ -300,7 +300,7 @@ describe('client entry: right Sidebar Context tab', () => {
     assert.equal(definitions.length, 1)
     assert.equal(definitions[0].id, 'dsh-context')
     assert.equal(definitions[0].kind, 'dsh-context')
-    assert.equal(definitions[0].title?.(), 'Context')
+    assert.equal(definitions[0].title?.(), 'Quota & Usage')
     const bodies = ctx.slots.of('sidebar.right.pane.tab')
     assert.equal(bodies.length, 1)
     assert.equal(bodies[0].registration.key, 'dsh-context')

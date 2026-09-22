@@ -34,7 +34,7 @@
 
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, join, relative } from 'node:path'
+import { dirname, isAbsolute, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 
@@ -146,7 +146,12 @@ function probeAnchor(resolve: Resolve, packageNames: readonly string[]): string 
  * would degrade to the home anchor, which is the safe direction.
  */
 function isInside(root: string, candidate: string): boolean {
-  return !relative(root, candidate).startsWith('..')
+  const rel = relative(root, candidate)
+  // Windows answers with an ABSOLUTE path when the two live on different
+  // drives, which would otherwise read as "inside" and silently discard a
+  // legitimate running-anchor witness (the plugin on one drive, the harness on
+  // another). An absolute answer is outside by construction.
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
 }
 
 /**

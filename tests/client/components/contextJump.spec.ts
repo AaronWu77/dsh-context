@@ -65,7 +65,7 @@ describe('ContextJump — click flow', () => {
     chat.textContent = 'Chat'
     const context = document.createElement('button')
     context.setAttribute('role', 'tab')
-    context.textContent = 'Context'
+    context.textContent = 'Quota & Usage'
     let contextClicks = 0
     context.addEventListener('click', () => { contextClicks++ })
     bar.append(chat, context)
@@ -130,7 +130,7 @@ describe('ContextJump — click flow', () => {
     const bar = document.createElement('div')
     const context = document.createElement('button')
     context.setAttribute('role', 'tab')
-    context.textContent = 'Context'
+    context.textContent = 'Quota & Usage'
     let contextClicks = 0
     context.addEventListener('click', () => { contextClicks++ })
     bar.appendChild(context)
@@ -160,7 +160,7 @@ describe('ContextJump — sidebar landing', () => {
     const bar = document.createElement('div')
     const context = document.createElement('button')
     context.setAttribute('role', 'tab')
-    context.textContent = 'Context'
+    context.textContent = 'Quota & Usage'
     let contextClicks = 0
     context.addEventListener('click', () => { contextClicks++ })
     bar.appendChild(context)
@@ -183,7 +183,7 @@ describe('ContextJump — sidebar landing', () => {
     const bar = document.createElement('div')
     const context = document.createElement('button')
     context.setAttribute('role', 'tab')
-    context.textContent = 'Context'
+    context.textContent = 'Quota & Usage'
     let contextClicks = 0
     context.addEventListener('click', () => { contextClicks++ })
     bar.appendChild(context)

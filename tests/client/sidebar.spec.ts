@@ -65,10 +65,10 @@ describe('watchSidebarContextTab — the optional registration', () => {
     const def = tabs.definitions[0]
     assert.equal(def.id, SIDEBAR_CONTEXT_ID)
     assert.equal(def.kind, SIDEBAR_CONTEXT_KIND, 'the kind is namespaced so a foreign `context` cannot collide')
-    assert.equal(def.title(), 'Context')
+    assert.equal(def.title(), 'Quota & Usage')
     assert.equal(def.guide?.length, 1)
     assert.equal(def.guide?.[0].order, 20, 'after the shipped Files entry (order 10)')
-    assert.equal(def.guide?.[0].title(), 'Context')
+    assert.equal(def.guide?.[0].title(), 'Quota & Usage')
     assert.equal(def.guide?.[0].description?.(), DICT_EN['sidebar.guideDescription'])
     assert.deepEqual(
       Object.keys(def.guide?.[0] ?? {}).sort(),
@@ -96,7 +96,7 @@ describe('watchSidebarContextTab — the optional registration', () => {
     const Title = ctx.slots.of('sidebar.right.pane.tab.title')[0].component
     const m = await mount(h(Title as () => ReactElement))
     assert.equal(query<SVGSVGElement>(m.container, 'svg').getAttribute('width'), '16')
-    assert.equal(text(m.container), 'Context')
+    assert.equal(text(m.container), 'Quota & Usage')
     await m.unmount()
     ctx.dispose()
   })
@@ -107,8 +107,8 @@ describe('watchSidebarContextTab — the optional registration', () => {
     const tabs = registry()
     ctx.setService('sidebarRightTabs', tabs)
     wire(ctx)
-    assert.equal(tabs.definitions[0].title(), '上下文')
-    assert.equal(tabs.definitions[0].guide?.[0].title(), '上下文')
+    assert.equal(tabs.definitions[0].title(), '额度与用量')
+    assert.equal(tabs.definitions[0].guide?.[0].title(), '额度与用量')
     assert.equal(tabs.definitions[0].guide?.[0].description?.(), DICT_ZH['sidebar.guideDescription'])
     ctx.dispose()
   })
