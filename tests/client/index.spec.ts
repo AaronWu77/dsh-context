@@ -227,6 +227,24 @@ describe('client entry: Context Dashboard seats', () => {
     ctx.dispose()
   })
 
+  test('publishes the contextOverview handle other plugins open the panel with', async () => {
+    const { overviewStore } = await import('../../src/client/overviewStore')
+    overviewStore.set(false)
+    const ctx = new TestClientCtx()
+    applyTo(ctx)
+    const handle = ctx.get('contextOverview') as { open: (day?: string) => void; day: () => string | null } | undefined
+    assert.ok(handle, 'the dashboard handle is published for other plugins')
+    assert.equal(overviewStore.getSnapshot(), false)
+    handle.open('2026-09-21')
+    assert.equal(overviewStore.getSnapshot(), true)
+    assert.equal(handle.day(), '2026-09-21', 'the day rides the open')
+    overviewStore.set(false)
+    handle.open()
+    assert.equal(handle.day(), null, 'a plain open clears the pin')
+    ctx.dispose()
+    assert.equal(ctx.get('contextOverview'), undefined, 'the handle goes with the plugin')
+    overviewStore.set(false)
+  })
   test('the entry opens the overlay through the shared store', async () => {
     const ctx = new TestClientCtx()
     applyTo(ctx)

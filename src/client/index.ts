@@ -37,6 +37,7 @@ import { makeContextJumpButton } from './components/contextJump'
 import { watchHistoryFaces } from './historyPage'
 import { watchPlacement } from './placement'
 import { watchSidebarContextTab } from './sidebar'
+import { overviewStore } from './overviewStore'
 import { makeViewKit } from './viewkit'
 
 // Theme-native styles: the bundle's global-CSS channel injects each sheet as
@@ -143,6 +144,20 @@ function apply(ctx: ClientCtx): void {
     )
   })
   const OverviewPanel = makeOverviewPanel(ctx, kit)
+
+  // The dashboard is a cross-plugin SURFACE: the usage cells live here, but
+  // the figures come from whoever provides them (codex-connect publishes
+  // `codexQuota`). A plugin that owns usage data opens THIS panel from its own
+  // card, so publish the smallest handle for that: open (optionally pinned to
+  // one day) plus the current pin. Consumers read it optionally through
+  // `ctx.get("contextOverview")`; it is owned by this plugin fiber and goes
+  // away with it.
+  ctx.provide('contextOverview', {
+    /** Open the dashboard, optionally pinned to one day key. */
+    open: (day?: string) => { overviewStore.open(day) },
+    /** The day the panel is pinned to (null when unpinned). */
+    day: () => overviewStore.day(),
+  })
   ctx.slots.inject('shell.overlay', () => {
     return ctx.slots.register(
       { name: 'shell.overlay', id: 'context-overview', order: 10, locale: NS },

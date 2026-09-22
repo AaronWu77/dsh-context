@@ -73,6 +73,7 @@ export class TestClientCtx {
   readonly slots = new TestSlots()
   readonly locale: TestLocale
   private readonly services = new Map<string, unknown>()
+  private readonly provided = new Set<string>()
   private readonly pending: { deps: string[]; cb: (ctx: TestClientCtx) => (() => void) | void }[] = []
   private readonly disposers: (() => void)[] = []
 
@@ -83,6 +84,16 @@ export class TestClientCtx {
 
   get(name: string): unknown {
     return this.services.get(name)
+  }
+
+  /**
+   * Cordis `provide`: a service this context owns, retired when it disposes.
+   * @param name - service name other plugins read through `ctx.get`.
+   * @param service - the provided value.
+   */
+  provide(name: string, service: unknown): void {
+    this.provided.add(name)
+    this.setService(name, service)
   }
 
   setService(name: string, service: unknown): void {
@@ -154,6 +165,10 @@ export class TestClientCtx {
 
   dispose(): void {
     while (this.disposers.length > 0) this.disposers.pop()?.()
+    // A provided service belongs to this context: cordis removes it on
+    // dispose, and consumers must stop seeing it too.
+    for (const name of this.provided) this.services.delete(name)
+    this.provided.clear()
   }
 }
 
