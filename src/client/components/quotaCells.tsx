@@ -115,7 +115,7 @@ function accountsOf(quota: CodexQuota | null): CodexQuotaAccount[] {
 
 /** One drill-down target, identified by the cell that opened it. */
 interface Detail {
-  kind: 'balance' | 'today' | 'window'
+  kind: 'balance' | 'today' | 'window' | 'account'
   /** Window cells key their detail by account + window length. */
   key?: string
 }
@@ -201,9 +201,9 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         </button>
       )
     }
-    const cells: ReactElement[] = []
+    const summary: ReactElement[] = []
     if (entry !== null) {
-      cells.push(cell(
+      summary.push(cell(
         'balance',
         t('ov.quota.balance'),
         symbolOf(entry.currency) + entry.total.toFixed(2),
@@ -212,7 +212,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       ))
     }
     if (today !== undefined && today.tokens > 0) {
-      cells.push(cell(
+      summary.push(cell(
         'today',
         t('ov.quota.today'),
         fmt(today.tokens),
@@ -220,6 +220,9 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         { kind: 'today' },
       ))
     }
+    // The window cells extend the summary; the compact layout below renders the
+    // summary plus one account row instead of these cells.
+    const cells: ReactElement[] = [...summary]
     // Multi-account surfaces mark each window with the account's rank instead
     // of its key: the full `acct <hash>` label cannot fit a three-column cell,
     // and the legend under the grid carries the mapping.
@@ -288,6 +291,18 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         if (refreshed !== undefined) rows.push([t('ov.quota.detail.refreshed'), fmtDuration(Date.now() - refreshed) + ' ' + t('ov.quota.detail.ago')])
       }
     }
+    if (detail !== null && detail.kind === 'account') {
+      const account = accounts.find(candidate => candidate.accountKey === detail.key)
+      if (account !== undefined) {
+        detailTitle = account.label === '' ? t('ov.quota.accountCurrent') : account.label
+        for (const win of [...account.windows].sort((left, right) => left.windowSeconds - right.windowSeconds).slice(0, WINDOWS_PER_ACCOUNT)) {
+          const reset = resetInOf(win)
+          rows.push([t('ov.quota.codexWindow', { w: windowLabel(win.windowSeconds) }), t('ov.quota.remaining', { p: Math.round(win.remainingPercent) }) + (reset === null ? '' : ' · ' + t('ov.quota.resetIn', { d: reset }))])
+        }
+        const refreshed = account.fetchedAt
+        if (refreshed !== undefined) rows.push([t('ov.quota.detail.refreshed'), fmtDuration(Date.now() - refreshed) + ' ' + t('ov.quota.detail.ago')])
+      }
+    }
     const legend = !named ? null : (
       <div className="lc-ov-quota-legend" role="group" aria-label={t('ov.quota.legend')}>
         {accounts.map((account, index) => (
@@ -319,8 +334,50 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
         {action}
       </div>
     )
+    if (props.compact === true) {
+      if (summary.length === 0 && accounts.length === 0) return null
+      return (
+        <div className="lc-ov-quota lc-ov-quota-compact">
+          {summary}
+          {accounts.map((account, index) => {
+            const accountOpen = detail !== null && detail.kind === 'account' && detail.key === account.accountKey
+            const windows = [...account.windows]
+              .sort((left, right) => left.windowSeconds - right.windowSeconds)
+              .slice(0, WINDOWS_PER_ACCOUNT)
+            const reset = windows.map(win => resetInOf(win)).filter((value): value is string => value !== null).join(' · ')
+            return (
+              <button
+                type="button"
+                key={account.accountKey}
+                className={'lc-ov-quota-account' + (accountOpen ? ' lc-ov-quota-on' : '')}
+                aria-expanded={accountOpen}
+                title={reset}
+                onClick={(event) => { event.stopPropagation(); setDetail(accountOpen ? null : { kind: 'account', key: account.accountKey }) }}
+                onKeyDown={(event) => { event.stopPropagation() }}
+              >
+                <span className="lc-ov-quota-account-head">
+                  {named ? rankOf(account.accountKey) : null}
+                  <span className="lc-ov-quota-account-name">
+                    {account.label === '' ? t('ov.quota.accountCurrent') : account.label}
+                  </span>
+                </span>
+                <span className="lc-ov-quota-account-windows">
+                  {windows.map(win => (
+                    <span className="lc-ov-quota-window" key={account.accountKey + ':' + String(win.windowSeconds)}>
+                      <span className="lc-ov-quota-window-label">{windowLabel(win.windowSeconds)}</span>
+                      <span className="lc-ov-quota-window-value">{String(Math.round(win.remainingPercent)) + '%'}</span>
+                    </span>
+                  ))}
+                </span>
+              </button>
+            )
+          })}
+          {panel}
+        </div>
+      )
+    }
     return (
-      <div className={'lc-ov-quota' + (props.compact === true ? ' lc-ov-quota-compact' : '')}>
+      <div className={'lc-ov-quota' + (cells.length >= 6 ? ' lc-ov-quota-multi' : '')}>
         {cells}
         {legend}
         {panel}

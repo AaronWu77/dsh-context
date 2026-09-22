@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { makeQuotaGrid } from '../../../src/client/components/quotaCells'
 import { TestClientCtx, asClientCtx } from '../helpers/harness'
-import { click, makeKit, mount, query, queryAll } from '../helpers/kit'
+import { click, makeKit, mount, query, queryAll, text } from '../helpers/kit'
 
 const TODAY = '2026-09-21'
 const DAYS = { [TODAY]: { tokens: 1234, requests: 7, sessions: 3 } }
@@ -85,6 +85,37 @@ describe('QuotaGrid', () => {
     await m.unmount()
   })
 
+  test('the sidebar widget renders one row per account instead of cells', async () => {
+    const ctx = asClientCtx(new TestClientCtx({ services: { codexQuota: serviceOf(TWO_ACCOUNTS) } }))
+    const Grid = makeQuotaGrid(ctx, makeKit())
+    const m = await mount(h(Grid, { days: DAYS, today: TODAY, compact: true }))
+    const rows = queryAll(m.container, '.lc-ov-quota-account')
+    assert.equal(rows.length, 2, 'one row per account')
+    assert.equal(queryAll(m.container, '.lc-ov-quota-cell').length, 1, 'only the today summary cell')
+    assert.equal(queryAll(m.container, '.lc-ov-quota-legend').length, 0, 'the rows carry the keys themselves')
+    const texts = rows.map(row => text(row).replace(/\s+/gu, ' '))
+    assert.ok(texts[0]!.includes('acct 43a31b') && texts[0]!.includes('5h') && texts[0]!.includes('62%'), texts[0])
+    assert.ok(texts[0]!.includes('7d') && texts[0]!.includes('34%'), texts[0])
+    assert.ok(texts[1]!.includes('acct e730b0') && texts[1]!.includes('88%') && texts[1]!.includes('51%'), texts[1])
+    assert.deepEqual(queryAll(m.container, '.lc-ov-quota-rank').map(el => el.textContent), ['#1', '#2'])
+    // The row drill-down reports both windows of THAT account.
+    await click(rows[0]!)
+    const labels = queryAll(m.container, '.lc-ov-quota-detail-label').map(el => el.textContent)
+    assert.deepEqual(labels.slice(0, 2), ['Codex 5h quota', 'Codex 7d quota'])
+    assert.equal(labels[2], 'Last refreshed', 'the row also reports when it was read')
+    const values = queryAll(m.container, '.lc-ov-quota-detail-value').map(el => el.textContent)
+    assert.ok(values[0]!.startsWith('62% left'), values[0])
+    await m.unmount()
+  })
+
+  test('a compact widget with no service renders only the day summary', async () => {
+    const ctx = asClientCtx(new TestClientCtx({ services: {} }))
+    const Grid = makeQuotaGrid(ctx, makeKit())
+    const m = await mount(h(Grid, { days: DAYS, today: TODAY, compact: true }))
+    assert.equal(queryAll(m.container, '.lc-ov-quota-cell').length, 1)
+    assert.equal(queryAll(m.container, '.lc-ov-quota-account').length, 0)
+    await m.unmount()
+  })
   test('a single-account service keeps the plain grid: no ranks, no legend', async () => {
     const m = await mountGrid({ windows: [window5h(62), window7d(34)] })
     assert.equal(queryAll(m.container, '.lc-ov-quota-cell').length, 3)

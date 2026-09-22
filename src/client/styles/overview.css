@@ -52,7 +52,7 @@
    stable` holds the bar's track so cards never reflow by its width when a
    column gains or loses it, and the right padding keeps the thumb clear of
    the card edges instead of riding on them. */
-.lc-ov-left { container: lc-quota / inline-size; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
+.lc-ov-left { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
 .lc-ov-right { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-right: 8px; }
 @container lc-ov (max-width: 932px) {
   .lc-ov-card { overflow-y: auto; }
@@ -177,11 +177,12 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--lc-
  * cells never crush or leave a hole.
  */
 .lc-ov-quota { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-@container lc-quota (min-width: 320px) {
-  /* Six or more cells means a second account's windows are in play: they fit
-     two rows of three rather than three rows of two. */
-  .lc-ov-quota:has(> :nth-child(6)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
+/*
+ * A multi-account dashboard grid (six cells: two summary plus two accounts of
+ * two windows) fills its row instead of stacking: auto-fit keeps two columns in
+ * a narrow insight column and three once it is wide, with no breakpoint to tune.
+ */
+.lc-ov-quota-multi { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); }
 /*
  * Every cell is a drill-down button: clicking it opens the detail block below
  * the grid. `font: inherit` keeps the button chrome from overriding the
@@ -227,14 +228,23 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--lc-
 
 /* The always-visible sidebar-foot widget: a compact frosted card carrying the
    account and quota grid; the whole card opens the detail overlay. */
-.lc-ov-widget { --lc-ov-accent: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--color-blue-500)); container: lc-quota / inline-size; display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px; padding: 8px 9px 9px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 70%, transparent); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 62%, transparent); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: var(--dsw-shadow-lv1, 0 2px 10px rgba(0, 0, 0, 0.18)); cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
+.lc-ov-widget { --lc-ov-accent: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--color-blue-500)); display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px; padding: 8px 9px 9px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 70%, transparent); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 62%, transparent); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: var(--dsw-shadow-lv1, 0 2px 10px rgba(0, 0, 0, 0.18)); width: 100%; box-sizing: border-box; min-width: 0; cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
 .lc-ov-widget:hover { background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 78%, transparent); box-shadow: var(--dsw-shadow-lv2, 0 4px 16px rgba(0, 0, 0, 0.22)); }
 .lc-ov-widget:focus-visible { outline: 2px solid color-mix(in srgb, var(--lc-ov-accent) 60%, transparent); outline-offset: 2px; }
 .lc-ov-widget-head { display: flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 .lc-ov-widget-title { font-weight: 600; }
 .lc-ov-widget-more { margin-left: auto; opacity: 0.5; }
 /* Compact scale inside the widget. */
-.lc-ov-quota-compact { gap: 6px; }
+.lc-ov-quota-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.lc-ov-quota-account { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 72%, transparent); font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color 120ms ease; }
+.lc-ov-quota-account:hover { border-color: color-mix(in srgb, var(--lc-ov-accent) 45%, var(--dsw-alias-border-l2)); }
+.lc-ov-quota-account-head { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.lc-ov-quota-account .lc-ov-quota-rank { margin-left: 0; }
+.lc-ov-quota-account-name { font-size: 10px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-ov-quota-account-windows { margin-left: auto; display: flex; align-items: baseline; gap: 10px; flex: none; font-variant-numeric: tabular-nums; }
+.lc-ov-quota-window { display: inline-flex; align-items: baseline; gap: 3px; }
+.lc-ov-quota-window-label { font-size: 10px; color: var(--dsw-alias-label-tertiary); }
+.lc-ov-quota-window-value { font-size: 12px; font-weight: 600; }
 .lc-ov-quota-compact .lc-ov-quota-cell { padding: 6px 7px; border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 72%, transparent); }
 .lc-ov-quota-compact .lc-ov-quota-label { font-size: 10px; }
 .lc-ov-quota-compact .lc-ov-quota-value { font-size: 13px; }
