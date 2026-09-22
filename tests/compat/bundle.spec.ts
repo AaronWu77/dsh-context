@@ -7,8 +7,8 @@
 //
 // Everything here runs against the REAL bundle in its own JSDOM with REAL
 // React and the REAL ui-primitives — only the harness services
-// (locale/slots/effects) are in-memory implementations of their documented
-// contracts.
+// (locale/slots/effects/provide) are in-memory implementations of their
+// documented contracts.
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -34,8 +34,9 @@ describe.skipIf(staging.artifactsMissing())('bundle smoke — the built lib/clie
     dicts: Map<string, Record<string, Record<string, string>>>
     slots: [string, { order?: number; id?: string; label?: () => string; inject?: (sessionId?: string) => unknown }][]
     sources: { trigger: string }[]
+    provided: Map<string, unknown>
     disposers: (() => void)[]
-  } = { dicts: new Map(), slots: [], sources: [], disposers: [] }
+  } = { dicts: new Map(), slots: [], sources: [], provided: new Map(), disposers: [] }
 
   const styleTags = (): HTMLElement[] =>
     [...dom.window.document.head.querySelectorAll<HTMLElement>('style[data-plugin="dsh-context"]')]
@@ -85,6 +86,10 @@ describe.skipIf(staging.artifactsMissing())('bundle smoke — the built lib/clie
         // fake answers every name it knows up front, so it fires immediately.
         // The settingsScope wiring guards on the absent binder itself.
         cb(ctx)
+      },
+      // Cordis `provide`: the plugin's own service, readable by other plugins.
+      provide(name: string, value: unknown) {
+        state.provided.set(name, value)
       },
       effect(fn: () => (() => void) | void) {
         const d = typeof fn === 'function' ? fn() : undefined
@@ -146,6 +151,9 @@ describe.skipIf(staging.artifactsMissing())('bundle smoke — the built lib/clie
     assert.equal(state.slots[4]?.[1].id, 'context-overview')
     assert.equal(state.sources.length, 1, '/context trigger source registered')
     assert.equal(state.sources[0]?.trigger, '/', 'trigger is the slash')
+    const dashboard = state.provided.get('contextOverview') as { open?: unknown; day?: unknown } | undefined
+    assert.equal(typeof dashboard?.open, 'function', 'the dashboard handle is provided for other plugins to open')
+    assert.equal(typeof dashboard?.day, 'function', 'the handle reports the pinned day')
   })
 
   test('HMR safety: fiber dispose removes every registration; the style tags survive it', () => {
