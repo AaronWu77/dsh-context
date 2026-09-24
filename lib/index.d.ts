@@ -1,37 +1,7 @@
 import { z } from "zod";
 import "@deepseek-ai/dsh-session";
+import z$1 from "@deepseek-ai/schemastery";
 import { Context } from "@deepseek-ai/cordis";
-//#region src/host/config.d.ts
-export interface Config {
-  /** Cap on kept per-step request records (the hard step backstop). */
-  maxRequestSteps?: number;
-  /** Newest whole-turn window kept; trimming crosses whole turns, never mid-turn. */
-  maxKeptTurns?: number;
-  maxEvents?: number;
-  /**
-   * Served surface nodes (newest carry the signal; live inject nodes are pinned — they land first and are few). Deliberately generous:
-   * auto-compaction keeps healthy surfaces far below it, so the browser effectively lists every live node; the bound is a
-   * pathological-session backstop (each push ships the whole value, ~150B/node).
-   */
-  maxNodes?: number;
-  /** Removed (shadowed) surface nodes kept for per-step reconstruction. */
-  maxArchiveNodes?: number;
-  /** Fold-derived file-operation records kept (the File Activity card's raw material). */
-  maxFileOps?: number;
-}
-/**
- * The cordis `Config` validator: strict on keys, defaults on the schema fields; tolerates `undefined` (a patch row without a `config:`
- * block — defaults win).
- */
-export declare const Config: z.ZodPreprocess<z.ZodObject<{
-  maxRequestSteps: z.ZodDefault<z.ZodNumber>;
-  maxKeptTurns: z.ZodDefault<z.ZodNumber>;
-  maxEvents: z.ZodDefault<z.ZodNumber>;
-  maxNodes: z.ZodDefault<z.ZodNumber>;
-  maxArchiveNodes: z.ZodDefault<z.ZodNumber>;
-  maxFileOps: z.ZodDefault<z.ZodNumber>;
-}, z.core.$strict>>;
-//#endregion
 //#region src/host/activity.d.ts
 /** The persisted fold state (the registry's `stateSchema` contract). */
 interface ActivityState {
@@ -362,6 +332,23 @@ interface ActivityDay {
 interface ContextActivity {
   days: Record<string, ActivityDay>;
 }
+/**
+ * The per-user display-preference vocabulary of the `dsh-context` settings
+ * namespace — the ONE declaration both halves share: the Host registers the
+ * namespace schema against it (host/settings.ts), the Client binds the scope
+ * and edits fields by name (client/settings.ts). Type-only, so both bundles
+ * erase it.
+ */
+type DefaultGranularity = 'step' | 'turn';
+type DefaultTrendMode = 'total' | 'delta';
+/** File Activity row order: most operations first, most-recently-touched first, or path ascending. */
+type DefaultFileSort = 'count' | 'latest' | 'path';
+/** Tool-definition row order: largest schema first, most call hits first, or name ascending. */
+type DefaultToolSort = 'size' | 'count' | 'name';
+/** Where the Context view is offered: the conversation tab, the right Sidebar, or both. */
+type DefaultPlacement = 'all' | 'tab' | 'sidebar';
+/** Whether the Context Insights panel's sidebar entry is offered at all. */
+type InsightsEntry = 'show' | 'hide';
 interface Snapshot {
   ok: boolean;
   /**
@@ -819,6 +806,69 @@ interface PlatformBalance {
   /** One entry per currency the account holds; at least one. */
   balances: PlatformBalanceEntry[];
 }
+//#endregion
+//#region src/host/config.d.ts
+export interface Config {
+  /** Cap on kept per-step request records (the hard step backstop). */
+  maxRequestSteps?: number;
+  /** Newest whole-turn window kept; trimming crosses whole turns, never mid-turn. */
+  maxKeptTurns?: number;
+  maxEvents?: number;
+  /**
+   * Served surface nodes (newest carry the signal; live inject nodes are pinned — they land first and are few). Deliberately generous:
+   * auto-compaction keeps healthy surfaces far below it, so the browser effectively lists every live node; the bound is a
+   * pathological-session backstop (each push ships the whole value, ~150B/node).
+   */
+  maxNodes?: number;
+  /** Removed (shadowed) surface nodes kept for per-step reconstruction. */
+  maxArchiveNodes?: number;
+  /** Fold-derived file-operation records kept (the File Activity card's raw material). */
+  maxFileOps?: number;
+  /** Where the Context view is offered: the conversation tab, the right Sidebar, or both. */
+  defaultPlacement?: DefaultPlacement;
+  /** Whether the history chart counts whole-turn windows or per-step slices. */
+  defaultGranularity?: DefaultGranularity;
+  /** Whether the trend chart reads cumulative totals or per-step deltas. */
+  defaultTrendMode?: DefaultTrendMode;
+  /** Tool-definition row order: largest schema first, most call hits first, or name ascending. */
+  defaultToolSort?: DefaultToolSort;
+  /** File Activity row order: most operations first, most-recently-touched first, or path ascending. */
+  defaultFileSort?: DefaultFileSort;
+  /** Whether the Context Insights panel's sidebar entry is offered at all. */
+  insightsEntry?: InsightsEntry;
+}
+/**
+ * The cordis `Config` validator: rejects unknown keys, validates the bounds, fills per-field defaults, and tolerates
+ * `undefined` (a patch row without a `config:` block — defaults win). The six preference fields are volatile, so
+ * the parsed value carries references for them; the Host never reads them.
+ */
+export declare const Config: z$1<Schemastery.ObjectS<NoInfer<{
+  maxRequestSteps: z$1<number, number, "defined">;
+  maxKeptTurns: z$1<number, number, "defined">;
+  maxEvents: z$1<number, number, "defined">;
+  maxNodes: z$1<number, number, "defined">;
+  maxArchiveNodes: z$1<number, number, "defined">;
+  maxFileOps: z$1<number, number, "defined">;
+  defaultPlacement: z$1<"all" | "sidebar" | "tab", "all" | "sidebar" | "tab", "defined">;
+  defaultGranularity: z$1<"step" | "turn", "step" | "turn", "defined">;
+  defaultTrendMode: z$1<"delta" | "total", "delta" | "total", "defined">;
+  defaultToolSort: z$1<"count" | "name" | "size", "count" | "name" | "size", "defined">;
+  defaultFileSort: z$1<"count" | "latest" | "path", "count" | "latest" | "path", "defined">;
+  insightsEntry: z$1<"hide" | "show", "hide" | "show", "defined">;
+}>>, Schemastery.ObjectT<NoInfer<{
+  maxRequestSteps: z$1<number, number, "defined">;
+  maxKeptTurns: z$1<number, number, "defined">;
+  maxEvents: z$1<number, number, "defined">;
+  maxNodes: z$1<number, number, "defined">;
+  maxArchiveNodes: z$1<number, number, "defined">;
+  maxFileOps: z$1<number, number, "defined">;
+  defaultPlacement: z$1<"all" | "sidebar" | "tab", "all" | "sidebar" | "tab", "defined">;
+  defaultGranularity: z$1<"step" | "turn", "step" | "turn", "defined">;
+  defaultTrendMode: z$1<"delta" | "total", "delta" | "total", "defined">;
+  defaultToolSort: z$1<"count" | "name" | "size", "count" | "name" | "size", "defined">;
+  defaultFileSort: z$1<"count" | "latest" | "path", "count" | "latest" | "path", "defined">;
+  insightsEntry: z$1<"hide" | "show", "hide" | "show", "defined">;
+}>>, "plain">;
 //#endregion
 //#region src/host/index.d.ts
 export declare const name = "dsh-context";

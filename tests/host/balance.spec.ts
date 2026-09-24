@@ -251,6 +251,7 @@ describe('balance route outcomes', () => {
       configuredCtx({ settings: { describe: () => [{ ns: 'other', value: {} }] } }),
       configuredCtx({ settings: { describe: () => [{ ns: 'llm-deepseek', value: 'not a section' }] } }),
       configuredCtx({ settings: { describe: () => { throw new Error('unsettled loader') } } }),
+      configuredCtx({ settings: { get: () => { throw new Error('unsettled loader') } } }),
       configuredCtx({ credentials: undefined }),
       configuredCtx({ credentials: {} }),
       configuredCtx({ credentials: { resolve: () => Promise.resolve(undefined) } }),

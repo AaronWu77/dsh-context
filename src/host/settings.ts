@@ -1,49 +1,41 @@
 /**
- * dsh-context user settings — the per-user preference namespace served to
- * browsers through the harness settings seam (`ctx.settings`).
+ * dsh-context user settings — the Host half of the per-user preference
+ * namespace served to browsers through the harness settings seam
+ * (`ctx.settings`).
  *
- * Distinct from the cordis `config:` block (config.ts), which is
- * deployment-level: the settings document is per-user and GUI-editable
- * (Settings → Plugins → Plugin configuration, the `settings.plugin.item`
- * card keyed by this namespace). The Host half only REGISTERS the namespace
- * — every field is a client-side display preference, so nothing here is
- * consumed on the Host.
+ * Distinct from the cordis `config:` block (config.ts), which carries both the
+ * deployment bounds and the preference vocabulary. Since dsh 0.1.7 the settings
+ * service builds one form per ACTIVE profile entry from that entry's Cordis
+ * Config schema and keeps only the fields marked `.volatile()`; `describe()`
+ * keys each form by the profile entry id, and this plugin's entry id IS its
+ * name, so the `settings.plugin.item` card keyed by SETTINGS_NAMESPACE stays
+ * aligned with the form with no registration call of its own. The Host half
+ * therefore only claims its page policy: `auto: false` keeps the harness from
+ * generating a second page beside the plugin's own card. Nothing here is
+ * consumed on the Host — every field is a client-side display preference.
  *
  * Optional composition: a deployment without a settings provider never runs
- * the inject callback and browsers simply see no card (schema defaults win).
+ * the inject callback and the plugin still loads; browsers then fall back to
+ * the schema defaults.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from '@deepseek-ai/schemastery'
-import type { PluginSettings } from '../shared/types'
+// Type-only: pulls the `ctx.settings` Context augmentation (the 0.1.7 form service).
+import type { } from '@deepseek-ai/dsh-settings'
 
-/** The namespace is the join key between the Host registration and the browser card. */
+/** The namespace is the join key between the Host Config entry and the browser card. */
 export const SETTINGS_NAMESPACE = 'dsh-context'
 
 // The preference vocabulary is declared once in shared/types.ts; re-exported
 // here so host-side consumers keep their canonical import path.
 export type { DefaultFileSort, DefaultGranularity, DefaultPlacement, DefaultToolSort, DefaultTrendMode, InsightsEntry, PluginSettings } from '../shared/types'
 
-/** Section schema: also the wire envelope the browser scope validates against. */
-export const SettingsSchema: z<PluginSettings> = z.object({
-  // Loose: a stale persisted value degrades to the default instead of breaking the section.
-  defaultPlacement: z.union(['all', 'tab', 'sidebar']).default('all').loose(),
-  defaultGranularity: z.union(['step', 'turn']).default('step'),
-  defaultTrendMode: z.union(['total', 'delta']).default('total').loose(),
-  defaultToolSort: z.union(['size', 'count', 'name']).default('count').loose(),
-  defaultFileSort: z.union(['count', 'latest', 'path']).default('count').loose(),
-  // Loose so a stale value also reads as the default (`show`): a config
-  // problem must never take the panel's entry away.
-  insightsEntry: z.union(['show', 'hide']).default('show').loose(),
-})
-
-/** Serve the namespace while a settings provider is composed; inert otherwise. */
+/** Claim the plugin's settings page policy while a settings provider is composed; inert otherwise. */
 export function installSettings(ctx: Context): void {
-  ctx.inject(['settings'], (sctx) => {
-    // The settings packages register the raw namespace string (the
-    // `settingsNamespace()` brand helper is long gone); the branded cast
-    // only satisfies the dsh-settings type face.
-    sctx.settings.register(SETTINGS_NAMESPACE as SettingsNamespace, SettingsSchema)
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.effect(
+      () => settingsCtx.settings.configure({ auto: false }, ctx.fiber),
+      'dsh-context: custom settings page policy',
+    )
   })
 }

@@ -138,6 +138,15 @@ beforeAll(() => {
   writeScratchHome('running-decoy', '@deepseek-ai/dsh-session',
     JSON.stringify({ name: '@deepseek-ai/dsh-decoy', version: '9.9.9', exports: { '.': './lib/index.js' } }),
     { path: 'lib/index.js' })
+  // A running-tree home OUTSIDE the repo (the header rule): the fixture omits
+  // dsh-session, which inside the repo would walk up into this repository's own
+  // node_modules and answer with its pinned devDependency. The CLI package is
+  // present at 0.0.1 so the test proves the running anchor never probes it.
+  writeScratchHome('running-module-skips-cli', '@deepseek-ai/dsh',
+    JSON.stringify({ name: '@deepseek-ai/dsh', version: '0.0.1' }))
+  writeScratchHome('running-module-skips-cli', '@deepseek-ai/dsh-session-projection',
+    JSON.stringify({ name: '@deepseek-ai/dsh-session-projection', version: '0.1.2-rc.1', exports: { '.': './lib/index.js' } }),
+    { path: 'lib/index.js' })
 })
 
 afterAll(() => {
@@ -170,7 +179,7 @@ describe('detectHarnessVersion — running anchor', () => {
     // The fixture pins the CLI at 0.0.1 but the library at the baseline: only
     // the library answer may come back.
     const ctx = ctxWithHome(scratchResolver('empty'))
-    assert.equal(detectHarnessVersion(ctx, runningResolver('module-skips-cli'), ELSEWHERE), '0.1.2-rc.1')
+    assert.equal(detectHarnessVersion(ctx, runningResolver('running-module-skips-cli', scratch), ELSEWHERE), '0.1.2-rc.1')
   })
 
   test('a resolving witness with no readable version falls through to home', () => {

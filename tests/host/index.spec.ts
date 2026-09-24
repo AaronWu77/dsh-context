@@ -43,16 +43,23 @@ async function until<T>(read: () => T | undefined, message: string): Promise<T> 
   assert.fail(message)
 }
 
-/** The minimal real envelope trio: header epoch, user message, metered assistant reply. */
+/** The minimal real 0.1.7 envelope set: header epoch, V3 system prompt, user message, metered assistant reply. */
 function appendRealEnvelopes(session: Session): void {
+  // A V3 header omits the system text and empty tool lists: 0.1.7's session
+  // validation rejects both, and the prompt is its own surface node below.
   session.append('request/header', {
-    header: {
-      config: { model: 'deepseek-v4-flash', provider: 'deepseek' },
-      system: 'sys',
-      tools: [],
-    },
+    header: { config: { model: 'deepseek-v4-flash', provider: 'deepseek' } },
     reason: 'initial',
   })
+  session.append('system/message', {
+    turn: 1,
+    step: 0,
+    message: {
+      role: 'system',
+      source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' },
+      content: [{ type: 'text', text: 'sys' }],
+    },
+  } as never, { surfaceOp: 'append' })
   session.append('user/message', {
     content: [{ type: 'text', text: 'hi' }],
     source: { kind: 'user' },
@@ -62,7 +69,7 @@ function appendRealEnvelopes(session: Session): void {
     step: 0,
     message: { content: [{ type: 'text', text: 'hello' }] },
     usage: { inputTokens: 10, outputTokens: 5 },
-  } as never, { surfaceOp: 'append', sourceEventSeqs: [] })
+  } as never, { surfaceOp: 'append' })
 }
 
 async function boot() {
@@ -97,7 +104,12 @@ describe('dsh-context host plugin', () => {
     assert.ok(headers !== undefined, 'contextHeaders served after real appends')
     assert.equal(headers.headers.length, 1)
     assert.ok(!('system' in headers.headers[0]), 'system text stays in the log, not the projection')
-    assert.ok((headers.headers[0].systemTokens ?? 0) > 0, 'the epoch carries its system token price')
+    assert.equal(headers.headers[0].systemTokens, undefined, 'a V3 header epoch carries no system text')
+    // On V3 the system prompt is its own surface node, not part of the header
+    // epoch: the timeline carries its price (the browser sizes the section from it).
+    assert.equal(timeline.systems?.length, 1, 'the V3 system prompt folds to one surface node')
+    assert.ok((timeline.systems?.[0]?.tokens ?? 0) > 0, 'the system node carries its token price')
+    assert.ok((timeline.current.system ?? 0) > 0, 'the timeline current shows the system price')
 
     const activity = snapshot.values.contextActivity
     assert.ok(activity !== undefined, 'contextActivity served after real appends')
