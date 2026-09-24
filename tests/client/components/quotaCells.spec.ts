@@ -56,7 +56,10 @@ describe('QuotaGrid', () => {
     const ranks = queryAll(m.container, '.lc-ov-quota-rank').map(el => el.textContent)
     assert.deepEqual(ranks, ['#1', '#1', '#2', '#2', '#1', '#2'], 'the four cells then the legend')
     assert.deepEqual(queryAll(m.container, '.lc-ov-quota-legend-label').map(el => el.textContent), ['acct 43a31b', 'acct e730b0'])
-    assert.equal(queryAll(m.container, '.lc-ov-quota-legend-active').length, 1, 'only the active account is marked')
+    // No account is marked as "active": both subscriptions are usable, so the
+    // rank chips are the only account identity on the grid.
+    assert.equal(queryAll(m.container, '.lc-ov-quota-rank-on').length, 0)
+    assert.equal(queryAll(m.container, '.lc-ov-quota-legend-active').length, 0)
     await m.unmount()
   })
 

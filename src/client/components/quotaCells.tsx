@@ -248,7 +248,7 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
     const rankOf = (accountKey: string): ReactElement | null => {
       if (!named) return null
       const rank = accounts.findIndex(candidate => candidate.accountKey === accountKey) + 1
-      return <span className={'lc-ov-quota-rank' + (accounts[rank - 1]?.active === true ? ' lc-ov-quota-rank-on' : '')}>{'#' + String(rank)}</span>
+      return <span className="lc-ov-quota-rank">{'#' + String(rank)}</span>
     }
     for (const account of accounts) {
       const windows = windowsOf(account)
@@ -324,9 +324,8 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       <div className="lc-ov-quota-legend" role="group" aria-label={t('ov.quota.legend')}>
         {accounts.map((account, index) => (
           <span className="lc-ov-quota-legend-item" key={account.accountKey}>
-            <span className={'lc-ov-quota-rank' + (account.active ? ' lc-ov-quota-rank-on' : '')}>{'#' + String(index + 1)}</span>
+            <span className="lc-ov-quota-rank">{'#' + String(index + 1)}</span>
             <span className="lc-ov-quota-legend-label">{account.label === '' ? t('ov.quota.accountCurrent') : account.label}</span>
-            {account.active && <span className="lc-ov-quota-legend-active">{t('ov.quota.accountCurrent')}</span>}
           </span>
         ))}
       </div>

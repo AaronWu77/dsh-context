@@ -205,11 +205,9 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--lc-
  * grid maps it back to the stored account (the drill-down names it in full).
  */
 .lc-ov-quota-rank { flex: none; margin-left: auto; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-secondary) 14%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 15px; font-variant-numeric: tabular-nums; }
-.lc-ov-quota-rank-on { background: color-mix(in srgb, var(--lc-ov-accent) 16%, transparent); color: var(--lc-ov-accent); }
 .lc-ov-quota-legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: 10px; color: var(--dsw-alias-label-secondary); }
 .lc-ov-quota-legend-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .lc-ov-quota-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lc-ov-quota-legend-active { color: var(--lc-ov-accent); }
 .lc-ov-quota-legend .lc-ov-quota-rank { margin-left: 0; }
 /* The drill-down block spans the grid under the cell that opened it. */
 .lc-ov-quota-detail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 80%, transparent); }
