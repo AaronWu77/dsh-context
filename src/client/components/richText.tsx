@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useMemo, useState, type ReactElement } from 'react'
-import { IconCheckOutline16, IconCopyOutline16, MarkdownText, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckOutlineRegular, IconCopyOutlineRegular, MarkdownText, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ViewKit } from '../viewkit'
 
 export type RichMode = 'raw' | 'md'
@@ -98,7 +98,7 @@ export function makeRichText(kit: ViewKit): RichKit {
         aria-label={label}
         onClick={onCopy}
       >
-        {copied ? <IconCheckOutline16 size={13} /> : <IconCopyOutline16 size={13} />}
+        {copied ? <IconCheckOutlineRegular size={13} /> : <IconCopyOutlineRegular size={13} />}
       </button>
     )
   }

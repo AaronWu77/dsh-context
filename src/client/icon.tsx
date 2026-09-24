@@ -5,7 +5,7 @@
  * wide widget, and the dashboard header — so one glyph means the plugin
  * everywhere.
  *
- * The dial geometry matches the harness `IconGaugeOutline16` artwork and is
+ * The dial geometry matches the harness `IconGaugeOutlineRegular` artwork and is
  * vendored rather than imported: the plugin's type dependency on
  * `@deepseek-ai/dsh-client-ui-primitives` predates that export (while the
  * running shell already ships it), so an import would fail this package's
