@@ -286,7 +286,7 @@ describe('client entry: configForms inject', () => {
   test('absent at apply time: the inject stays pending — no card, plugin still loaded', () => {
     const ctx = new TestClientCtx()
     applyTo(ctx)
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
+    assert.equal(ctx.slots.of('settings.plugins.tab').length, 0)
     assert.equal(ctx.slots.of('conversation.view').length, 1, 'the view still registers without the settings surface')
     ctx.dispose()
   })
@@ -299,15 +299,15 @@ describe('client entry: configForms inject', () => {
     ctx.setService('configForms', forms)
     assert.deepEqual(forms.watches, [['dsh-context']], 'the card watches the plugin namespace')
     assert.equal(form.subscribes, 1, 'the preference store subscribes to the form')
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 1)
+    assert.equal(ctx.slots.of('settings.plugins.tab').length, 1)
     ctx.dispose()
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 0, 'disposal unwinds the card registration')
+    assert.equal(ctx.slots.of('settings.plugins.tab').length, 0, 'disposal unwinds the card registration')
   })
 
   test('a composed service that does not serve the namespace shows no card', () => {
     const ctx = new TestClientCtx({ services: { configForms: makeForms(makeForm({ status: 'ready', value: {}, writable: true }), true) } })
     applyTo(ctx)
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
+    assert.equal(ctx.slots.of('settings.plugins.tab').length, 0)
     ctx.dispose()
   })
 
@@ -315,7 +315,7 @@ describe('client entry: configForms inject', () => {
     const ctx = new TestClientCtx()
     ctx.setService('configForms', undefined)
     applyTo(ctx)
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
+    assert.equal(ctx.slots.of('settings.plugins.tab').length, 0)
     ctx.dispose()
   })
 })
@@ -353,13 +353,13 @@ describe('client entry: settings card slot', () => {
   function setup(): {
     ctx: TestClientCtx
     form: ReturnType<typeof makeForm>
-    registration: { name: string; key?: string; locale?: string; inject?: () => unknown }
+    registration: { name: string; id?: string; order?: number; label?: () => string; locale?: string; inject?: () => unknown }
     component: (props: Record<string, unknown>) => unknown
   } {
     const form = makeForm({ status: 'loading', value: null, writable: false })
     const ctx = new TestClientCtx({ services: { configForms: makeForms(form) } })
     applyTo(ctx)
-    const entry = ctx.slots.of('settings.plugin.item')[0]
+    const entry = ctx.slots.of('settings.plugins.tab')[0]
     return {
       ctx,
       form,
@@ -370,9 +370,10 @@ describe('client entry: settings card slot', () => {
 
   test('registers the keyed card; inject exposes the settings store and a set verb', () => {
     const { ctx, form, registration } = setup()
-    assert.equal(registration.name, 'settings.plugin.item')
-    assert.equal(registration.key, 'dsh-context')
+    assert.equal(registration.name, 'settings.plugins.tab')
+    assert.equal(registration.id, 'dsh-context')
     assert.equal(registration.locale, 'dsh-context')
+    assert.equal(registration.label?.(), 'Quota & Usage')
 
     const face = registration.inject?.() as {
       hooks: { contextSettings: { getSnapshot(): SettingsState } }
@@ -390,7 +391,7 @@ describe('client entry: settings card slot', () => {
     const el = component({}) as ReactElement
     assert.equal(typeof el.type, 'function')
     assert.equal((el.type as { name: string }).name, 'SettingsCard')
-    const store = (ctx.slots.of('settings.plugin.item')[0].registration.inject?.() as {
+    const store = (ctx.slots.of('settings.plugins.tab')[0].registration.inject?.() as {
       hooks: { contextSettings: { getSnapshot(): SettingsState } }
     }).hooks.contextSettings
     const m = await mount(h(el.type as never, {

@@ -30,7 +30,7 @@ export interface SlotRegistration {
   /** List slots dispatch on id + order. */
   id?: string
   order?: number
-  /** Keyed slots (e.g. settings.plugin.item) dispatch on the entry key. */
+  /** Keyed slots dispatch on the entry key. */
   key?: string
   /** optional dictionary namespace; the framework then synthesizes the `t` seat. */
   locale?: string

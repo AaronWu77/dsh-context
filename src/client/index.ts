@@ -166,11 +166,11 @@ function apply(ctx: ClientCtx): void {
   })
 
   // Per-user display preferences: bind the Host-served `dsh-context`
-  // configuration form and claim its Plugin configuration card while the Host
-  // serves the namespace. Optional composition — a deployment without the
+  // configuration form and claim its Plugins settings tab while the Host serves
+  // the namespace. Optional composition — a deployment without the
   // configuration-form service (or with no settings service behind it) keeps
-  // the schema defaults and shows no card. `whileServed` watches the describe
-  // mirror, so the card appears exactly when the entry is served and goes away
+  // the schema defaults and shows no tab. `whileServed` watches the describe
+  // mirror, so the tab appears exactly when the entry is served and goes away
   // when it is not.
   ctx.inject(['configForms'], (raw) => {
     const c = raw as ClientCtx & { configForms?: ConfigFormsFace }
@@ -181,14 +181,15 @@ function apply(ctx: ClientCtx): void {
     c.effect(() => forms.whileServed([NS], () => {
       // slots.inject returns its declaration-watch disposer; the minimal
       // services.ts face types it unknown, and whileServed needs the callable.
-      return c.slots.inject('settings.plugin.item', () => {
+      return c.slots.inject('settings.plugins.tab', () => {
         return c.slots.register(
-          { name: 'settings.plugin.item', key: NS, locale: NS,
+          { name: 'settings.plugins.tab', id: NS, order: 50, locale: NS,
+            label: () => kit.t('settings.title'),
             inject: () => ({
               hooks: { contextSettings: settings.store },
               set: (field: SettingsField, value: string) => { settings.set(field, value) },
             }) },
-          // Root-scope keyed slot: no sessionId on these props — the face
+          // Root-scope list slot: no sessionId on these props — the face
           // (hooks + set) arrives through the registration's inject.
           props => h(SettingsCard, props as unknown as Parameters<typeof SettingsCard>[0]),
         )

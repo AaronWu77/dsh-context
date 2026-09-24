@@ -8,7 +8,7 @@
  * service builds one form per ACTIVE profile entry from that entry's Cordis
  * Config schema and keeps only the fields marked `.volatile()`; `describe()`
  * keys each form by the profile entry id, and this plugin's entry id IS its
- * name, so the `settings.plugin.item` card keyed by SETTINGS_NAMESPACE stays
+ * name, so the `settings.plugins.tab` card keyed by SETTINGS_NAMESPACE stays
  * aligned with the form with no registration call of its own. The Host half
  * therefore only claims its page policy: `auto: false` keeps the harness from
  * generating a second page beside the plugin's own card. Nothing here is

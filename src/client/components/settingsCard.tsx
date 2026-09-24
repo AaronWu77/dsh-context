@@ -1,5 +1,5 @@
 /**
-   * The dsh-context card in Settings → Plugins → Plugin configuration, registered on the framework's `settings.plugin.item` slot keyed on
+   * The dsh-context card in Settings → Plugins → Plugin configuration, registered on the framework's `settings.plugins.tab` slot keyed on
    * the
    * Host-served `dsh-context` settings namespace — the section itself supplies nothing; it renders nothing while the namespace is
    * unavailable
