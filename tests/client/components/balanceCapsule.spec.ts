@@ -48,6 +48,16 @@ describe('BalanceCapsule', () => {
     await m2.unmount()
   })
 
+  test('a locale face without getLocale reads as en (USD)', async () => {
+    stubRoute({ ok: true, value: WIRE_BALANCE })
+    const bare = { locale: {} } as unknown as Parameters<typeof makeBalanceCapsule>[0]
+    const Capsule = makeBalanceCapsule(bare, kit)
+    const m = await mount(h(Capsule, {}))
+    await flush()
+    assert.equal(query(m.container, '.lc-ov-balance-value')?.textContent, '$12.50')
+    await m.unmount()
+  })
+
   test('the en locale shows USD with the total and the breakdown tooltip', async () => {
     stubRoute({ ok: true, value: WIRE_BALANCE })
     const Capsule = makeBalanceCapsule(asClientCtx(new TestClientCtx({ locale: 'en' })), kit)

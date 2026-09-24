@@ -195,6 +195,19 @@ describe('OverviewPanel', () => {
     await m.unmount()
   })
 
+  test('the heatmap 7d/30d range toggles the drawn window', async () => {
+    const ctx = makeCtx()
+    const { m } = await openPanel(ctx)
+    const heatButtons = queryAll<HTMLButtonElement>(m.container, '.lc-ov-heat-range .lc-gran-btn')
+    assert.equal(heatButtons.length, 2)
+    await click(heatButtons[0]) // 7 days
+    assert.ok(heatButtons[0].className.includes('lc-gran-on'), 'the 7-day range is active')
+    assert.ok(!heatButtons[1].className.includes('lc-gran-on'))
+    await click(heatButtons[1]) // back to 30 days
+    assert.ok(heatButtons[1].className.includes('lc-gran-on'))
+    await m.unmount()
+  })
+
   test('the heatmap day pin filters the grid and the chip clears it', async () => {
     const ctx = makeCtx()
     const { m } = await openPanel(ctx)

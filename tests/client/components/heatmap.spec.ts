@@ -5,8 +5,18 @@
 import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { gridOf, makeHeatmap, todayKey } from '../../../src/client/components/heatmap'
+import { gridOf, gridWindowOf, makeHeatmap, todayKey } from '../../../src/client/components/heatmap'
 import { click, hover, makeKit, mount, query, queryAll, text, unhover } from '../helpers/kit'
+
+// jsdom implements no ResizeObserver; the primitives' Tooltip constructs one
+// on mount. A no-op stands in so the hover path drives the real Tooltip.
+if (typeof ResizeObserver === 'undefined') {
+  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+}
 
 const kit = makeKit()
 const Heatmap = makeHeatmap(kit)
@@ -35,6 +45,28 @@ describe('gridOf', () => {
     // 9999-12-31 was a Friday of the week starting Monday 9999-12-27: the
     // week's tail days leave the four-digit year, so no grid can hold it.
     assert.equal(gridOf('9999-12-31', 2), null, 'the final week of the representable range overflows')
+  })
+})
+
+describe('gridWindowOf', () => {
+  test('lays out exactly the last N days, marking the leading partial week outside', () => {
+    const grid = gridWindowOf(TODAY, 7)
+    assert.ok(grid !== null)
+    // The requested window is 2026-09-10..2026-09-16; its Monday-first leading
+    // week opens 2026-09-07, whose first three days predate the window.
+    assert.equal(grid.length, 2)
+    assert.equal(grid[0][0].key, '2026-09-07')
+    assert.equal(grid[0][0].outside, true)
+    assert.equal(grid[0][3].key, '2026-09-10', 'the first in-window day')
+    assert.equal(grid[0][3].outside, false)
+    assert.equal(grid[1][2].key, TODAY)
+    assert.equal(grid[1][3].future, true, 'days after today stay future placeholders')
+  })
+
+  test('degraded inputs read null', () => {
+    assert.equal(gridWindowOf(TODAY, 0), null, 'no days to draw')
+    assert.equal(gridWindowOf('garbage', 7), null, 'an unparsable today has no start')
+    assert.equal(gridWindowOf('9999-12-31', 2), null, 'the final week overflows the representable range')
   })
 })
 

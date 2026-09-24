@@ -13,7 +13,7 @@ import { makeContextView } from '../../../src/client/components/contextView'
 import { watchHistoryFaces } from '../../../src/client/historyPage'
 import { requestContextFocus, takeContextFocus } from '../../../src/client/viewFocus'
 import { createContextSettings } from '../../../src/client/settings'
-import type { SettingsScopeLike } from '../../../src/client/settings'
+import type { SettingsFormLike } from '../../../src/client/settings'
 import { resetModelPrices, setModelPricesLoader } from '../../../src/client/modelPrices'
 import type { UseChatLike } from '../../../src/client/services'
 import type { ContextTimeline } from '../../../src/shared/types'
@@ -1067,7 +1067,7 @@ describe('ContextView — locale and settings', () => {
 
   test('mount-time granularity/trend/file-sort defaults come from the bound settings scope', async () => {
     const settings = createContextSettings()
-    const scope: SettingsScopeLike = {
+    const scope: SettingsFormLike = {
       getSnapshot: () => ({
         status: 'ready',
         writable: true,

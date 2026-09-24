@@ -39,9 +39,13 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', async () => {
       captured.markdownProps = props
       return React.createElement('div', null, String(props.text ?? ''))
     },
-    // The rich-text copy control's glyphs and clipboard writer.
-    IconCopyOutline16: () => React.createElement('span', null),
-    IconCheckOutline16: () => React.createElement('span', null),
+    // The context surfaces' glyphs and the rich-text copy writer.
+    IconCopyOutlineRegular: () => React.createElement('span', null),
+    IconCheckOutlineRegular: () => React.createElement('span', null),
+    IconCloseOutlineRegular: () => React.createElement('span', null),
+    IconBranchOutlineRegular: () => React.createElement('span', null),
+    IconPlusOutlineRegular: () => React.createElement('span', null),
+    IconChevronDownOutlineRegular: () => React.createElement('span', null),
     writeClipboard: async () => true,
   }
 })

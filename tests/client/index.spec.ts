@@ -1,6 +1,6 @@
 // Client entry (src/client/index.ts): the plugin's apply() wiring asserted
 // through the faithful harness-context seams — dictionaries, slots, the
-// /context trigger source, and the deferred settingsScope inject — plus real
+// /context trigger source, and the deferred configForms inject — plus real
 // renders of the registered components.
 
 import { createElement as h, type ReactElement } from 'react'
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { DICT_EN, DICT_ZH } from '../../src/client/i18n'
 import { modalStoreOf, type ModalStore } from '../../src/client/modalStore'
-import type { SettingsField, SettingsScopeLike, SettingsState } from '../../src/client/settings'
+import type { ConfigFormsFace, SettingsField, SettingsFormLike, SettingsState } from '../../src/client/settings'
 import { TestClientCtx, TestSessions, asClientCtx } from './helpers/harness'
 import { click, mount, query, queryAll } from './helpers/kit'
 
@@ -24,7 +24,7 @@ function applyTo(ctx: TestClientCtx): void {
   apply(asClientCtx(ctx))
 }
 
-function makeScope(snapshot: { status: string; value: unknown; writable: boolean }): SettingsScopeLike & {
+function makeForm(snapshot: { status: string; value: unknown; writable: boolean }): SettingsFormLike & {
   subscribes: number
   sets: { field: string; value: unknown }[]
 } {
@@ -38,6 +38,25 @@ function makeScope(snapshot: { status: string; value: unknown; writable: boolean
     },
     set: async (field: string, value: unknown) => {
       rec.sets.push({ field, value })
+    },
+  }
+  return rec
+}
+
+/**
+ * The configForms service stand-in: one form per namespace plus the
+ * served-namespace watch the card registration follows. `unserved` models a
+ * Host that composes the service but does not expose this namespace's entry.
+ */
+function makeForms(form: SettingsFormLike, unserved = false): ConfigFormsFace & { watches: string[][] } {
+  const rec = {
+    watches: [] as string[][],
+    get: () => form,
+    whileServed(namespaces: readonly string[], register: (served: ReadonlySet<string>) => () => void): () => void {
+      rec.watches.push([...namespaces])
+      if (unserved) return () => {}
+      const off = register(new Set(namespaces))
+      return () => off()
     },
   }
   return rec
@@ -263,34 +282,38 @@ describe('client entry: Context Dashboard seats', () => {
   })
 })
 
-describe('client entry: settingsScope inject', () => {
-  test('absent at apply time: the inject stays pending — no settings.plugin.item slot', () => {
+describe('client entry: configForms inject', () => {
+  test('absent at apply time: the inject stays pending — no card, plugin still loaded', () => {
     const ctx = new TestClientCtx()
+    applyTo(ctx)
+    assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
+    assert.equal(ctx.slots.of('conversation.view').length, 1, 'the view still registers without the settings surface')
+    ctx.dispose()
+  })
+
+  test('armed later: the pending inject runs — form attached and card slot registered', () => {
+    const ctx = new TestClientCtx()
+    applyTo(ctx)
+    const form = makeForm({ status: 'ready', value: {}, writable: true })
+    const forms = makeForms(form)
+    ctx.setService('configForms', forms)
+    assert.deepEqual(forms.watches, [['dsh-context']], 'the card watches the plugin namespace')
+    assert.equal(form.subscribes, 1, 'the preference store subscribes to the form')
+    assert.equal(ctx.slots.of('settings.plugin.item').length, 1)
+    ctx.dispose()
+    assert.equal(ctx.slots.of('settings.plugin.item').length, 0, 'disposal unwinds the card registration')
+  })
+
+  test('a composed service that does not serve the namespace shows no card', () => {
+    const ctx = new TestClientCtx({ services: { configForms: makeForms(makeForm({ status: 'ready', value: {}, writable: true }), true) } })
     applyTo(ctx)
     assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
     ctx.dispose()
   })
 
-  test('armed later: the pending inject runs — scope attached and card slot registered', () => {
-    const ctx = new TestClientCtx()
-    applyTo(ctx)
-    const scope = makeScope({ status: 'ready', value: {}, writable: true })
-    const specs: { namespace: string }[] = []
-    ctx.setService('settingsScope', {
-      bind: (spec: { namespace: string }) => {
-        specs.push(spec)
-        return scope
-      },
-    })
-    assert.deepEqual(specs, [{ namespace: 'dsh-context' }])
-    assert.equal(scope.subscribes, 1)
-    assert.equal(ctx.slots.of('settings.plugin.item').length, 1)
-    ctx.dispose()
-  })
-
   test('defensive arm: service key present but undefined — early return, no slot, no throw', () => {
     const ctx = new TestClientCtx()
-    ctx.setService('settingsScope', undefined)
+    ctx.setService('configForms', undefined)
     applyTo(ctx)
     assert.equal(ctx.slots.of('settings.plugin.item').length, 0)
     ctx.dispose()
@@ -329,26 +352,24 @@ describe('client entry: right Sidebar Context tab', () => {
 describe('client entry: settings card slot', () => {
   function setup(): {
     ctx: TestClientCtx
-    scope: ReturnType<typeof makeScope>
+    form: ReturnType<typeof makeForm>
     registration: { name: string; key?: string; locale?: string; inject?: () => unknown }
     component: (props: Record<string, unknown>) => unknown
   } {
-    const scope = makeScope({ status: 'loading', value: null, writable: false })
-    const ctx = new TestClientCtx({
-      services: { settingsScope: { bind: () => scope } },
-    })
+    const form = makeForm({ status: 'loading', value: null, writable: false })
+    const ctx = new TestClientCtx({ services: { configForms: makeForms(form) } })
     applyTo(ctx)
     const entry = ctx.slots.of('settings.plugin.item')[0]
     return {
       ctx,
-      scope,
+      form,
       registration: entry.registration as never,
       component: entry.component as never,
     }
   }
 
   test('registers the keyed card; inject exposes the settings store and a set verb', () => {
-    const { ctx, scope, registration } = setup()
+    const { ctx, form, registration } = setup()
     assert.equal(registration.name, 'settings.plugin.item')
     assert.equal(registration.key, 'dsh-context')
     assert.equal(registration.locale, 'dsh-context')
@@ -360,7 +381,7 @@ describe('client entry: settings card slot', () => {
     assert.equal(face.hooks.contextSettings.getSnapshot().granularity, 'step')
     face.set('defaultGranularity', 'turn')
     assert.equal(face.hooks.contextSettings.getSnapshot().granularity, 'turn')
-    assert.deepEqual(scope.sets, [{ field: 'defaultGranularity', value: 'turn' }])
+    assert.deepEqual(form.sets, [{ field: 'defaultGranularity', value: 'turn' }])
     ctx.dispose()
   })
 
@@ -386,8 +407,8 @@ describe('client entry: settings card slot', () => {
 })
 
 describe('client entry: placement gating', () => {
-  /** A settings scope whose snapshot the test drives (the emit path). */
-  function scopeWith(snapshot: { status: string; value: unknown; writable: boolean }): SettingsScopeLike & {
+  /** A settings form whose snapshot the test drives (the emit path). */
+  function formWith(snapshot: { status: string; value: unknown; writable: boolean }): SettingsFormLike & {
     emit(next: { status: string; value: unknown; writable: boolean }): void
   } {
     let current = snapshot
@@ -420,8 +441,8 @@ describe('client entry: placement gating', () => {
   }
 
   test("the persisted 'sidebar' placement skips the conversation tab and keeps the sidebar", () => {
-    const scope = scopeWith({ status: 'ready', value: { defaultPlacement: 'sidebar' }, writable: true })
-    const ctx = new TestClientCtx({ services: { settingsScope: { bind: () => scope } } })
+    const scope = formWith({ status: 'ready', value: { defaultPlacement: 'sidebar' }, writable: true })
+    const ctx = new TestClientCtx({ services: { configForms: makeForms(scope) } })
     applyTo(ctx)
     assert.deepEqual(ctx.slots.of('conversation.view'), [], 'the dropped tab never registered')
     const tabs = registry()
@@ -434,8 +455,8 @@ describe('client entry: placement gating', () => {
   })
 
   test('a preference flip moves the registrations live; disposal unwinds everything', () => {
-    const scope = scopeWith({ status: 'ready', value: {}, writable: true })
-    const ctx = new TestClientCtx({ services: { settingsScope: { bind: () => scope } } })
+    const scope = formWith({ status: 'ready', value: {}, writable: true })
+    const ctx = new TestClientCtx({ services: { configForms: makeForms(scope) } })
     applyTo(ctx)
     const tabs = registry()
     ctx.setService('sidebarRightTabs', tabs)

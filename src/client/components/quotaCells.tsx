@@ -351,7 +351,8 @@ export function makeQuotaGrid(ctx: ClientCtx, kit: ViewKit): (props: QuotaGridPr
       </div>
     )
     if (props.compact === true) {
-      if (summary.length === 0 && accounts.length === 0) return null
+      // The compact grid always has at least one cell: the fully empty case
+      // returned above (cells.length === 0).
       return (
         <div className="lc-ov-quota lc-ov-quota-compact">
           {summary}

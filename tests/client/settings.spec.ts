@@ -1,15 +1,15 @@
 // Settings binding (src/client/settings.ts): defaults, the observable store,
-// scope attach/sync, preference parsing, and the local-echo set path.
+// form attach/sync, preference parsing, and the local-echo set path.
 
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { createContextSettings, type SettingsScopeLike } from '../../src/client/settings'
+import { createContextSettings, type SettingsFormLike } from '../../src/client/settings'
 
 /**
- * A faithful in-memory settings scope (the harness settingsScope.bind
- * contract: getSnapshot/subscribe/set), not a mock of plugin code.
+ * A faithful in-memory settings form (the harness configForms.get contract:
+ * getSnapshot/subscribe/set), not a mock of plugin code.
  */
-class TestSettingsScope implements SettingsScopeLike {
+class TestSettingsForm implements SettingsFormLike {
   private snapshot: { status: string; value: unknown; writable: boolean }
   private readonly listeners = new Set<() => void>()
   readonly sets: { field: string; value: unknown }[] = []
@@ -106,7 +106,7 @@ describe('set', () => {
 
   test('with attach it echoes locally and writes through the scope', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     s.attach(scope)
     s.set('defaultTrendMode', 'delta')
     assert.equal(s.defaultTrendMode(), 'delta')
@@ -115,7 +115,7 @@ describe('set', () => {
 
   test('a rejected scope write settles handled and rolls the echo back to the scope truth', async () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: { defaultTrendMode: 'total' }, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: { defaultTrendMode: 'total' }, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('defaultTrendMode', 'delta')
@@ -129,7 +129,7 @@ describe('set', () => {
     // The scope's snapshot lacks the field entirely (older Host half): the
     // rollback sync keeps the in-session choice rather than dropping it.
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('defaultFileSort', 'path')
@@ -142,7 +142,7 @@ describe('set', () => {
     // the next reload — with nothing valid in the scope's truth, fall back
     // to `all`.
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('defaultPlacement', 'sidebar')
@@ -155,7 +155,7 @@ describe('set', () => {
     // The scope truth itself is a valid placement: the rollback restores it,
     // no forced degrade.
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: { defaultPlacement: 'sidebar' }, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: { defaultPlacement: 'sidebar' }, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('defaultPlacement', 'tab')
@@ -168,7 +168,7 @@ describe('set', () => {
     // until the next reload — with nothing valid in the scope's truth, fall
     // back to `show`.
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('insightsEntry', 'hide')
@@ -179,7 +179,7 @@ describe('set', () => {
 
   test('a rejected insights-entry write rolls back to the scope\'s valid truth', async () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: { insightsEntry: 'hide' }, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: { insightsEntry: 'hide' }, writable: true })
     s.attach(scope)
     scope.failSet = true
     s.set('insightsEntry', 'show')
@@ -191,7 +191,7 @@ describe('set', () => {
 describe('attach', () => {
   test('syncs a ready snapshot with parsed preferences', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({
+    const scope = new TestSettingsForm({
       status: 'ready',
       value: {
         defaultPlacement: 'sidebar',
@@ -218,14 +218,14 @@ describe('attach', () => {
 
   test('an unavailable snapshot keeps parsed preferences', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'unavailable', value: {}, writable: false })
+    const scope = new TestSettingsForm({ status: 'unavailable', value: {}, writable: false })
     s.attach(scope)
     assert.equal(s.store.getSnapshot().status, 'unavailable')
   })
 
   test('any other snapshot status reads as loading', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'pending', value: {}, writable: false })
+    const scope = new TestSettingsForm({ status: 'pending', value: {}, writable: false })
     s.attach(scope)
     assert.equal(s.store.getSnapshot().status, 'loading')
   })
@@ -233,7 +233,7 @@ describe('attach', () => {
   test('null/non-object section values keep the defaults', () => {
     for (const value of [null, 42]) {
       const s = createContextSettings()
-      s.attach(new TestSettingsScope({ status: 'ready', value, writable: false }))
+      s.attach(new TestSettingsForm({ status: 'ready', value, writable: false }))
       assert.deepEqual(s.store.getSnapshot(), {
         status: 'ready',
         placement: 'all',
@@ -249,7 +249,7 @@ describe('attach', () => {
 
   test('invalid preference values keep the defaults', () => {
     const s = createContextSettings()
-    s.attach(new TestSettingsScope({
+    s.attach(new TestSettingsForm({
       status: 'ready',
       value: { defaultPlacement: 'window', defaultGranularity: 'bogus', defaultTrendMode: 7, defaultToolSort: 'alpha', defaultFileSort: 'alpha', insightsEntry: 42 },
       writable: false,
@@ -268,7 +268,7 @@ describe('attach', () => {
     const s = createContextSettings()
     s.set('defaultPlacement', 'tab')
     assert.equal(s.defaultPlacement(), 'tab')
-    const scope = new TestSettingsScope({ status: 'ready', value: { defaultPlacement: 42 }, writable: false })
+    const scope = new TestSettingsForm({ status: 'ready', value: { defaultPlacement: 42 }, writable: false })
     s.attach(scope)
     assert.equal(s.defaultPlacement(), 'all')
   })
@@ -279,14 +279,14 @@ describe('attach', () => {
     const s = createContextSettings()
     s.set('insightsEntry', 'hide')
     assert.equal(s.insightsEntry(), 'hide')
-    const scope = new TestSettingsScope({ status: 'ready', value: { insightsEntry: 'visible' }, writable: false })
+    const scope = new TestSettingsForm({ status: 'ready', value: { insightsEntry: 'visible' }, writable: false })
     s.attach(scope)
     assert.equal(s.insightsEntry(), 'show')
   })
 
   test('explicit schema-default values are accepted', () => {
     const s = createContextSettings()
-    s.attach(new TestSettingsScope({
+    s.attach(new TestSettingsForm({
       status: 'ready',
       value: { defaultPlacement: 'all', defaultGranularity: 'step', defaultTrendMode: 'total', defaultToolSort: 'count', defaultFileSort: 'count', insightsEntry: 'show' },
       writable: false,
@@ -304,7 +304,7 @@ describe('attach', () => {
     s.set('defaultPlacement', 'tab')
     s.set('defaultToolSort', 'size')
     s.set('insightsEntry', 'hide')
-    s.attach(new TestSettingsScope({ status: 'ready', value: { defaultFileSort: 'latest' }, writable: false }))
+    s.attach(new TestSettingsForm({ status: 'ready', value: { defaultFileSort: 'latest' }, writable: false }))
     assert.equal(s.defaultPlacement(), 'tab', 'the in-session choice survives a section without the field')
     assert.equal(s.defaultGranularity(), 'step')
     assert.equal(s.defaultTrendMode(), 'total')
@@ -315,7 +315,7 @@ describe('attach', () => {
 
   test('scope updates republish to subscribers', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     s.attach(scope)
     let calls = 0
     s.store.subscribe(() => { calls++ })
@@ -344,7 +344,7 @@ describe('attach', () => {
 
   test('an identical scope snapshot does not notify listeners', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({
+    const scope = new TestSettingsForm({
       status: 'ready',
       value: { defaultGranularity: 'turn', defaultFileSort: 'latest' },
       writable: true,
@@ -358,7 +358,7 @@ describe('attach', () => {
 
   test('the returned disposer detaches the scope subscription', () => {
     const s = createContextSettings()
-    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const scope = new TestSettingsForm({ status: 'ready', value: {}, writable: true })
     const detach = s.attach(scope)
     detach()
     let calls = 0

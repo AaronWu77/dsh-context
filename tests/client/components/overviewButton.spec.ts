@@ -9,7 +9,8 @@ import { makeOverviewButton } from '../../../src/client/components/overviewButto
 import { overviewStore } from '../../../src/client/overviewStore'
 import { createContextSettings } from '../../../src/client/settings'
 import { TestClientCtx, asClientCtx } from '../helpers/harness'
-import { click, makeKit, mount, query, queryAll } from '../helpers/kit'
+import { click, keydown, makeKit, mount, query, queryAll } from '../helpers/kit'
+import { todayKey } from '../../../src/client/components/heatmap'
 
 const kit = makeKit()
 const ctx = asClientCtx(new TestClientCtx({ services: { sessions: {} } }))
@@ -67,6 +68,43 @@ describe('OverviewButton', () => {
 
     await act(async () => { settings.set('insightsEntry', 'show') })
     assert.ok(query(m.container, '.lc-ov-widget'), 'flipping back restores the entry')
+    await m.unmount()
+  })
+
+  test('the widget opens on Enter/Space; a key from a child cell does not', async () => {
+    overviewStore.set(false)
+    const m = await mount(h(Button, { wide: true }))
+    const widget = query(m.container, '.lc-ov-widget')
+    await keydown('Enter', widget)
+    assert.equal(overviewStore.getSnapshot(), true, 'Enter on the card body opens')
+    overviewStore.set(false)
+    await keydown(' ', widget)
+    assert.equal(overviewStore.getSnapshot(), true, 'Space on the card body opens')
+    overviewStore.set(false)
+    await keydown('Enter', query(m.container, '.lc-ov-widget-title'))
+    assert.equal(overviewStore.getSnapshot(), false, 'a key from a focused child cell is ignored')
+    await keydown('a', widget)
+    assert.equal(overviewStore.getSnapshot(), false, 'an unrelated key does not open')
+    await m.unmount()
+  })
+
+  test('a sessions snapshot feeds the widget and its today pin opens the panel on that day', async () => {
+    overviewStore.set(false)
+    const today = todayKey()
+    const snapshot = {
+      ids: ['s1'],
+      byId: { s1: { updatedAt: Date.now(), projectionValues: { contextActivity: { days: { [today]: { tokens: 5, requests: 1 } } } } } },
+      current: 's1',
+      phase: 'ready',
+    }
+    const Wired = makeOverviewButton(kit, ctx)
+    const m = await mount(h(Wired, {
+      wide: true,
+      useSessions: <T,>(selector: (snapshot: unknown) => T): T => selector(snapshot),
+    }))
+    await click(query(m.container, '.lc-ov-quota-cell'))
+    await click(query<HTMLButtonElement>(m.container, '.lc-ov-quota-detail-action'))
+    assert.equal(overviewStore.day(), today, 'the day rides the open')
     await m.unmount()
   })
 

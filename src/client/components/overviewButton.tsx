@@ -98,7 +98,10 @@ export function makeOverviewButton(
           days={days}
           today={todayKey()}
           compact
-          onSelectDay={(day) => { overviewStore.open(day ?? undefined) }}
+          onSelectDay={(day) => {
+            /* v8 ignore next -- QuotaGrid relays only `props.today` (a string), so the null arm never runs. */
+            overviewStore.open(day ?? undefined)
+          }}
         />
       </div>
     )

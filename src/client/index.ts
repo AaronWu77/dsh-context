@@ -31,7 +31,7 @@ import { makeOverviewPanel } from './components/overviewPanel'
 import { makeSettingsCard } from './components/settingsCard'
 import { modalStoreOf } from './modalStore'
 import type { ClientCtx } from './services'
-import { createContextSettings, type SettingsField, type SettingsScopeBinderFace } from './settings'
+import { createContextSettings, type ConfigFormsFace, type SettingsField } from './settings'
 import { makeContextView } from './components/contextView'
 import { makeContextJumpButton } from './components/contextJump'
 import { watchHistoryFaces } from './historyPage'
@@ -166,27 +166,34 @@ function apply(ctx: ClientCtx): void {
   })
 
   // Per-user display preferences: bind the Host-served `dsh-context`
-  // namespace and claim its Plugin configuration card. Optional composition
-  // — a deployment without the settings surface keeps the schema defaults
-  // and shows no card.
-  ctx.inject(['settingsScope'], (raw) => {
-    const c = raw as ClientCtx & { settingsScope?: SettingsScopeBinderFace }
-    const binder = c.settingsScope
-    if (binder === undefined) return
-    c.effect(() => settings.attach(binder.bind({ namespace: NS })), 'dsh-context: settings scope')
+  // configuration form and claim its Plugin configuration card while the Host
+  // serves the namespace. Optional composition — a deployment without the
+  // configuration-form service (or with no settings service behind it) keeps
+  // the schema defaults and shows no card. `whileServed` watches the describe
+  // mirror, so the card appears exactly when the entry is served and goes away
+  // when it is not.
+  ctx.inject(['configForms'], (raw) => {
+    const c = raw as ClientCtx & { configForms?: ConfigFormsFace }
+    const forms = c.configForms
+    if (forms === undefined) return
+    c.effect(() => settings.attach(forms.get(NS)), 'dsh-context: settings form')
     const SettingsCard = makeSettingsCard(kit)
-    c.slots.inject('settings.plugin.item', () => {
-      return c.slots.register(
-        { name: 'settings.plugin.item', key: NS, locale: NS,
-          inject: () => ({
-            hooks: { contextSettings: settings.store },
-            set: (field: SettingsField, value: string) => { settings.set(field, value) },
-          }) },
-        // Root-scope keyed slot: no sessionId on these props — the face
-        // (hooks + set) arrives through the registration's inject.
-        props => h(SettingsCard, props as unknown as Parameters<typeof SettingsCard>[0]),
-      )
-    })
+    c.effect(() => forms.whileServed([NS], () => {
+      // slots.inject returns its declaration-watch disposer; the minimal
+      // services.ts face types it unknown, and whileServed needs the callable.
+      return c.slots.inject('settings.plugin.item', () => {
+        return c.slots.register(
+          { name: 'settings.plugin.item', key: NS, locale: NS,
+            inject: () => ({
+              hooks: { contextSettings: settings.store },
+              set: (field: SettingsField, value: string) => { settings.set(field, value) },
+            }) },
+          // Root-scope keyed slot: no sessionId on these props — the face
+          // (hooks + set) arrives through the registration's inject.
+          props => h(SettingsCard, props as unknown as Parameters<typeof SettingsCard>[0]),
+        )
+      }) as () => void
+    }), 'dsh-context: settings card')
   })
 }
 

@@ -84,7 +84,7 @@ describe.skipIf(staging.artifactsMissing())('bundle smoke — the built lib/clie
       inject(_deps: string[], cb: (c: unknown) => void) {
         // Cordis fires the callback once every requested service exists; this
         // fake answers every name it knows up front, so it fires immediately.
-        // The settingsScope wiring guards on the absent binder itself.
+        // The configForms wiring guards on the absent service itself.
         cb(ctx)
       },
       // Cordis `provide`: the plugin's own service, readable by other plugins.

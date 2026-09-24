@@ -41,6 +41,22 @@ describe('overviewStore', () => {
     assert.equal(calls, 0)
   })
 
+  test('open from closed pins and notifies; a second open repins the open panel', () => {
+    let calls = 0
+    const unsubscribe = overviewStore.subscribe(() => { calls++ })
+    overviewStore.open('2026-09-21')
+    assert.equal(overviewStore.getSnapshot(), true)
+    assert.equal(overviewStore.day(), '2026-09-21')
+    assert.equal(calls, 1)
+    overviewStore.open('2026-09-22')
+    assert.equal(calls, 2, 'a fresh pin still reaches the open panel')
+    assert.equal(overviewStore.day(), '2026-09-22')
+    overviewStore.open()
+    assert.equal(overviewStore.day(), null, 'a plain open clears the pin')
+    assert.equal(calls, 3)
+    unsubscribe()
+  })
+
   test('several listeners all hear a flip', () => {
     let a = 0
     let b = 0
