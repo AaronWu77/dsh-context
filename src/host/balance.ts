@@ -45,7 +45,10 @@ const FETCH_TIMEOUT_MS = 10_000
 
 /** The harness `settings` service, as far as the route consumes it. */
 interface SettingsHostFace {
+  /** Pre-0.1.7 read face: one namespace's live section. */
   get?(ns: string): unknown
+  /** 0.1.7+ read face: every served entry's descriptor, its `value` included. */
+  describe?(options?: object): Array<{ ns: string; value: unknown }>
 }
 
 /** The harness `credentials` service, as far as the route consumes it. */
@@ -82,6 +85,35 @@ function amountOf(value: unknown): number | null {
 interface DeepSeekFacts { baseUrl: string; apiKey: string }
 
 /**
+ * Read llm-deepseek's live section across the settings service's two read
+ * faces: `get(ns)` on harnesses up to 0.1.5 and the `describe()` descriptor
+ * list (whose entries carry `value`) from 0.1.7 on, where `get` was removed.
+ * @param settings - the host settings service, when composed.
+ * @returns the section record, or null when neither face serves it.
+ */
+function readDeepSeekSection(settings: SettingsHostFace | undefined): Record<string, unknown> | null {
+  if (typeof settings?.get === 'function') {
+    try {
+      const direct = asRecord(settings.get(DEEPSEEK_SETTINGS_NS))
+      if (direct !== null) return direct
+    } catch (error) {
+      // A read face that refuses (an unsettled loader) is absent, not fatal.
+      void error
+    }
+  }
+  if (typeof settings?.describe === 'function') {
+    try {
+      const descriptor = settings.describe().find(candidate => candidate.ns === DEEPSEEK_SETTINGS_NS)
+      return asRecord(descriptor?.value)
+    } catch (error) {
+      // Same contract as the legacy face: an unreadable section reads absent.
+      void error
+    }
+  }
+  return null
+}
+
+/**
  * Resolve the DeepSeek connection facts exactly as llm-deepseek serves its
  * requests: its settings section for the credential ref and endpoint, the
  * credentials service for the key. `null` whenever any fact is missing —
@@ -89,7 +121,7 @@ interface DeepSeekFacts { baseUrl: string; apiKey: string }
  */
 async function resolveFacts(ctx: Context): Promise<DeepSeekFacts | null> {
   const settings = ctx.get('settings') as SettingsHostFace | undefined
-  const section = typeof settings?.get === 'function' ? asRecord(settings.get(DEEPSEEK_SETTINGS_NS)) : null
+  const section = readDeepSeekSection(settings)
   if (section === null) return null
   const apiKeyEnv = typeof section.apiKeyEnv === 'string' && section.apiKeyEnv !== ''
     ? section.apiKeyEnv

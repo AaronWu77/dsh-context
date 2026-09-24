@@ -69,6 +69,11 @@ function settingsOf(section: unknown): { get(ns: string): unknown } {
   return { get: (ns: string) => (ns === 'llm-deepseek' ? section : undefined) }
 }
 
+/** The 0.1.7+ settings face: `describe()` descriptors carrying each entry's value. */
+function settingsDescribeOf(section: unknown): { describe(): Array<{ ns: string; value: unknown }> } {
+  return { describe: () => [{ ns: 'llm-deepseek', value: section }] }
+}
+
 /** The harness credentials face serving one resolved value. */
 function credentialsOf(value: unknown, calls?: string[]): { resolve(ref: string): Promise<{ value: unknown } | undefined> } {
   return {
@@ -202,6 +207,25 @@ describe('balance route outcomes', () => {
     assert.equal(log[0]?.auth, 'Bearer sk-proxy')
   })
 
+  test('the 0.1.7 descriptor face serves the same facts when `get` is absent', async () => {
+    const refs: string[] = []
+    const { ctx, captured } = ctxOf({
+      connection: { fetch: { register: () => () => {} } },
+      settings: settingsDescribeOf({ apiKeyEnv: 'MY_DEEPSEEK_KEY', baseURL: 'https://proxy.test' }),
+      credentials: credentialsOf('sk-describe', refs),
+    })
+    watchBalanceChannel(ctx)
+    const { log } = stubPlatform(CNY_BALANCE)
+    const reply = await serve(captured)
+    assert.deepEqual(refs, ['MY_DEEPSEEK_KEY'])
+    assert.equal(log[0]?.url, 'https://proxy.test/user/balance')
+    assert.equal(log[0]?.auth, 'Bearer sk-describe')
+    assert.deepEqual(reply, {
+      ok: true,
+      value: { isAvailable: true, balances: [{ currency: 'CNY', total: 110, granted: 10, toppedUp: 100 }] },
+    })
+  })
+
   test('an already-numeric amount variant and an unavailable flag pass through', async () => {
     const { ctx, captured } = ctxOf(configuredCtx())
     watchBalanceChannel(ctx)
@@ -223,6 +247,10 @@ describe('balance route outcomes', () => {
       configuredCtx({ settings: { get: 'nope' } }),
       configuredCtx({ settings: settingsOf(undefined) }),
       configuredCtx({ settings: settingsOf('not a section') }),
+      configuredCtx({ settings: { describe: () => [] } }),
+      configuredCtx({ settings: { describe: () => [{ ns: 'other', value: {} }] } }),
+      configuredCtx({ settings: { describe: () => [{ ns: 'llm-deepseek', value: 'not a section' }] } }),
+      configuredCtx({ settings: { describe: () => { throw new Error('unsettled loader') } } }),
       configuredCtx({ credentials: undefined }),
       configuredCtx({ credentials: {} }),
       configuredCtx({ credentials: { resolve: () => Promise.resolve(undefined) } }),
